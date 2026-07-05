@@ -68,8 +68,10 @@ interface Absence {
   motif: Motif;
   dateDebut: string;
   dateFin: string;
+  dateReprise?: string;
   note?: string;
 }
+
 
 interface Person {
   id: string;
@@ -109,6 +111,17 @@ function fmt(d: string) {
   }
 }
 
+function addDaysISO(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function repriseOf(a: Absence): string {
+  return a.dateReprise || addDaysISO(a.dateFin, 1);
+}
+
+
 function initials(name: string) {
   return name
     .split(/\s+/)
@@ -135,6 +148,7 @@ function exportCSV(people: Person[]) {
       "Motif",
       "Date debut",
       "Date fin",
+      "Date reprise",
       "Duree (jours)",
       "Note",
     ].join(";"),
@@ -154,6 +168,7 @@ function exportCSV(people: Person[]) {
           a.motif,
           a.dateDebut,
           a.dateFin,
+          repriseOf(a),
           String(dur),
           a.note ?? "",
         ]
@@ -162,6 +177,7 @@ function exportCSV(people: Person[]) {
       );
     }
   }
+
   // BOM for Excel UTF-8
   const blob = new Blob(["\uFEFF" + rows.join("\n")], {
     type: "text/csv;charset=utf-8;",
@@ -196,21 +212,31 @@ function Index() {
   }, [people, loaded]);
 
   const expiring = useMemo(() => {
-    const items: { person: Person; absence: Absence; days: number }[] = [];
+    const items: { person: Person; absence: Absence; days: number; reprise: string }[] = [];
     for (const p of people) {
       for (const a of p.absences) {
-        const d = daysUntil(a.dateFin);
-        if (d >= 0 && d <= 3) items.push({ person: p, absence: a, days: d });
+        const rep = repriseOf(a);
+        const d = daysUntil(rep);
+        if (d >= 0 && d <= 3) items.push({ person: p, absence: a, days: d, reprise: rep });
       }
     }
     return items.sort((a, b) => a.days - b.days);
   }, [people]);
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const repriseTodayIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of people) {
+      if (p.absences.some((a) => repriseOf(a) === todayStr)) s.add(p.id);
+    }
+    return s;
+  }, [people, todayStr]);
+
   const totalAbsences = useMemo(
     () => people.reduce((s, p) => s + p.absences.length, 0),
     [people],
   );
-  const todayStr = new Date().toISOString().slice(0, 10);
   const activeCount = useMemo(
     () =>
       people.filter((p) =>
@@ -222,17 +248,19 @@ function Index() {
   useEffect(() => {
     if (!loaded) return;
     for (const e of expiring) {
-      const key = `notified-${e.absence.id}-${e.days}`;
+      const key = `notified-reprise-${e.absence.id}-${e.days}`;
       if (!sessionStorage.getItem(key)) {
-        toast.warning(`Expiration proche : ${e.person.nom}`, {
-          description: `${e.absence.motif} se termine ${
+        toast.warning(`Reprise de service : ${e.person.nom}`, {
+          description: `${e.absence.motif} · reprise ${
             e.days === 0 ? "aujourd'hui" : `dans ${e.days} jour(s)`
-          } (${fmt(e.absence.dateFin)})`,
+          } (${fmt(e.reprise)})`,
+          duration: e.days === 0 ? 10000 : 5000,
         });
         sessionStorage.setItem(key, "1");
       }
     }
   }, [expiring, loaded]);
+
 
   const addPerson = (p: Omit<Person, "id" | "absences">) => {
     setPeople((prev) => [...prev, { ...p, id: crypto.randomUUID(), absences: [] }]);
@@ -379,6 +407,7 @@ function Index() {
             onDelete={deletePerson}
             onOpenAbsence={setAbsencePerson}
             onDeleteAbsence={deleteAbsence}
+            repriseTodayIds={repriseTodayIds}
           />
         ) : (
           <Tabs value={activeTeam} onValueChange={(v) => setActiveTeam(v as Team)}>
@@ -407,9 +436,11 @@ function Index() {
                   onDelete={deletePerson}
                   onOpenAbsence={setAbsencePerson}
                   onDeleteAbsence={deleteAbsence}
+                  repriseTodayIds={repriseTodayIds}
                 />
               </TabsContent>
             ))}
+
           </Tabs>
         )}
       </main>
@@ -529,11 +560,13 @@ function TeamList({
   onDelete,
   onOpenAbsence,
   onDeleteAbsence,
+  repriseTodayIds,
 }: {
   people: Person[];
   onDelete: (id: string) => void;
   onOpenAbsence: (p: Person) => void;
   onDeleteAbsence: (personId: string, absenceId: string) => void;
+  repriseTodayIds: Set<string>;
 }) {
   if (people.length === 0) {
     return (
@@ -555,32 +588,45 @@ function TeamList({
         const active = p.absences.find(
           (a) => a.dateDebut <= today && a.dateFin >= today,
         );
+        const repriseToday = repriseTodayIds.has(p.id);
         return (
           <div
             key={p.id}
-            className="group rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all overflow-hidden"
+            className={`group rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all overflow-hidden ${
+              repriseToday ? "border-destructive ring-2 ring-destructive/40" : ""
+            }`}
           >
             <button
               onClick={() => onOpenAbsence(p)}
               className="w-full text-left p-4 flex items-center gap-3 hover:bg-muted/40 transition-colors"
             >
               <div
-                className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow"
+                className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow ${
+                  repriseToday ? "pulse-ring" : ""
+                }`}
                 style={{ background: "var(--gradient-primary)" }}
               >
                 {initials(p.nom) || "?"}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-semibold truncate">{p.nom}</div>
+                <div className={`font-semibold truncate ${repriseToday ? "blink-red" : ""}`}>
+                  {p.nom}
+                </div>
                 <div className="text-xs text-muted-foreground truncate">
                   {p.grade || "—"}
                 </div>
                 <div className="text-[10px] text-muted-foreground/80 font-mono mt-0.5 truncate">
                   PPR {p.ppr || "—"} · CIN {p.cin || "—"}
                 </div>
+                {repriseToday && (
+                  <div className="text-[11px] font-bold text-destructive mt-1 uppercase tracking-wide">
+                    ● Reprise de service aujourd'hui
+                  </div>
+                )}
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
             </button>
+
 
             {active && (
               <div className="px-4 pb-2">
@@ -614,6 +660,10 @@ function TeamList({
                           <div className="text-muted-foreground truncate">
                             {fmt(a.dateDebut)} → {fmt(a.dateFin)}
                           </div>
+                          <div className="text-[10px] text-muted-foreground/80 truncate">
+                            Reprise : {fmt(repriseOf(a))}
+                          </div>
+
                         </div>
                         <button
                           onClick={() => onDeleteAbsence(p.id, a.id)}
@@ -726,7 +776,17 @@ function AddAbsenceDialog({
   const [motif, setMotif] = useState<Motif>("Congé administratif");
   const [dateDebut, setDateDebut] = useState("");
   const [dateFin, setDateFin] = useState("");
+  const [dateReprise, setDateReprise] = useState("");
+  const [repriseTouched, setRepriseTouched] = useState(false);
   const [note, setNote] = useState("");
+
+  // Auto-suggest reprise = dateFin + 1 unless user changed it
+  const handleFinChange = (v: string) => {
+    setDateFin(v);
+    if (v && !repriseTouched) {
+      setDateReprise(addDaysISO(v, 1));
+    }
+  };
 
   return (
     <DialogContent className="max-w-md rounded-2xl">
@@ -751,8 +811,20 @@ function AddAbsenceDialog({
           </div>
           <div>
             <Label>Date fin</Label>
-            <Input type="date" value={dateFin} onChange={(e) => setDateFin(e.target.value)} className="rounded-xl" />
+            <Input type="date" value={dateFin} onChange={(e) => handleFinChange(e.target.value)} className="rounded-xl" />
           </div>
+        </div>
+        <div>
+          <Label>Date de reprise de service</Label>
+          <Input
+            type="date"
+            value={dateReprise}
+            onChange={(e) => { setDateReprise(e.target.value); setRepriseTouched(true); }}
+            className="rounded-xl"
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Vous serez alerté(e) ce jour-là (nom clignotant en rouge).
+          </p>
         </div>
         <div>
           <Label>Note (optionnel)</Label>
@@ -766,7 +838,14 @@ function AddAbsenceDialog({
           onClick={() => {
             if (!dateDebut || !dateFin) return toast.error("Dates requises");
             if (dateFin < dateDebut) return toast.error("La date de fin doit être après la date de début");
-            onSubmit({ motif, dateDebut, dateFin, note: note.trim() || undefined });
+            if (dateReprise && dateReprise < dateFin) return toast.error("La reprise doit être après la date de fin");
+            onSubmit({
+              motif,
+              dateDebut,
+              dateFin,
+              dateReprise: dateReprise || addDaysISO(dateFin, 1),
+              note: note.trim() || undefined,
+            });
           }}
         >
           Enregistrer
@@ -776,18 +855,22 @@ function AddAbsenceDialog({
   );
 }
 
+
+
 function SearchResults({
   people,
   query,
   onDelete,
   onOpenAbsence,
   onDeleteAbsence,
+  repriseTodayIds,
 }: {
   people: Person[];
   query: string;
   onDelete: (id: string) => void;
   onOpenAbsence: (p: Person) => void;
   onDeleteAbsence: (personId: string, absenceId: string) => void;
+  repriseTodayIds: Set<string>;
 }) {
   const q = query.toLowerCase();
   const matches = people.filter(
@@ -807,10 +890,12 @@ function SearchResults({
         onDelete={onDelete}
         onOpenAbsence={onOpenAbsence}
         onDeleteAbsence={onDeleteAbsence}
+        repriseTodayIds={repriseTodayIds}
       />
     </div>
   );
 }
+
 
 function AboutDialog({
   open,
