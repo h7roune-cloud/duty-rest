@@ -775,3 +775,83 @@ function AddAbsenceDialog({
     </DialogContent>
   );
 }
+
+function SearchResults({
+  people,
+  query,
+  onDelete,
+  onOpenAbsence,
+  onDeleteAbsence,
+}: {
+  people: Person[];
+  query: string;
+  onDelete: (id: string) => void;
+  onOpenAbsence: (p: Person) => void;
+  onDeleteAbsence: (personId: string, absenceId: string) => void;
+}) {
+  const q = query.toLowerCase();
+  const matches = people.filter(
+    (p) =>
+      p.nom.toLowerCase().includes(q) ||
+      p.grade.toLowerCase().includes(q) ||
+      p.ppr.toLowerCase().includes(q) ||
+      p.cin.toLowerCase().includes(q),
+  );
+  return (
+    <div className="space-y-3">
+      <div className="text-xs text-muted-foreground px-1">
+        {matches.length} résultat(s) pour « {query} »
+      </div>
+      <TeamList
+        people={matches}
+        onDelete={onDelete}
+        onOpenAbsence={onOpenAbsence}
+        onDeleteAbsence={onDeleteAbsence}
+      />
+    </div>
+  );
+}
+
+function AboutDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" /> À propos
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 text-sm">
+          <p className="text-muted-foreground leading-relaxed">
+            Application de gestion des congés administratifs, congés maladie,
+            permissions et récupérations du personnel. Organisez vos équipes
+            (Équipe A, Équipe B, Standardistes, Service administratif),
+            enregistrez les absences, recevez des notifications à l'approche
+            des expirations et exportez toutes les données au format CSV/Excel.
+          </p>
+          <div className="rounded-2xl border p-4 bg-muted/40 space-y-2">
+            <div className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
+              Développeur
+            </div>
+            <div className="font-semibold text-base">Ayoub Sadkouni</div>
+            <a
+              href="mailto:sadkouni1@gmail.com"
+              className="inline-flex items-center gap-2 text-primary hover:underline text-sm"
+            >
+              <Mail className="w-4 h-4" /> sadkouni1@gmail.com
+            </a>
+          </div>
+          <div className="text-[11px] text-muted-foreground text-center">
+            Données stockées localement sur votre appareil.
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
