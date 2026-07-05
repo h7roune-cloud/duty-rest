@@ -81,9 +81,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Application de gestion des congés administratifs, maladies, permissions et récupérations du personnel." },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "Gestion des Congés du Personnel" },
-      { property: "og:description", content: "Suivi des congés, permissions et absences du personnel avec notifications." },
+      { property: "og:description", content: "Application de gestion des congés administratifs, maladies, permissions et récupérations du personnel." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Gestion des Congés du Personnel" },
+      { name: "twitter:description", content: "Application de gestion des congés administratifs, maladies, permissions et récupérations du personnel." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b1b64ca5-b76f-4b67-ab92-8fda0258f9ff/id-preview-3031066d--423b4028-ef90-4a3d-895e-f3e3d832dd39.lovable.app-1783274297778.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b1b64ca5-b76f-4b67-ab92-8fda0258f9ff/id-preview-3031066d--423b4028-ef90-4a3d-895e-f3e3d832dd39.lovable.app-1783274297778.png" },
     ],
     links: [
       {
