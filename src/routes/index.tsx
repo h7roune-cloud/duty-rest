@@ -148,6 +148,7 @@ function exportCSV(people: Person[]) {
       "Motif",
       "Date debut",
       "Date fin",
+      "Date reprise",
       "Duree (jours)",
       "Note",
     ].join(";"),
@@ -167,6 +168,7 @@ function exportCSV(people: Person[]) {
           a.motif,
           a.dateDebut,
           a.dateFin,
+          repriseOf(a),
           String(dur),
           a.note ?? "",
         ]
@@ -175,6 +177,7 @@ function exportCSV(people: Person[]) {
       );
     }
   }
+
   // BOM for Excel UTF-8
   const blob = new Blob(["\uFEFF" + rows.join("\n")], {
     type: "text/csv;charset=utf-8;",
