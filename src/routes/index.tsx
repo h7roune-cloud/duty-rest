@@ -32,6 +32,10 @@ import {
   UserPlus,
   Sparkles,
   ChevronRight,
+  Search,
+  Info,
+  Mail,
+  X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -178,6 +182,8 @@ function Index() {
   const [activeTeam, setActiveTeam] = useState<Team>("Equipe A");
   const [addPersonOpen, setAddPersonOpen] = useState(false);
   const [absencePerson, setAbsencePerson] = useState<Person | null>(null);
+  const [search, setSearch] = useState("");
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   useEffect(() => {
     setPeople(loadPeople());
@@ -293,7 +299,18 @@ function Index() {
                 </p>
               </div>
             </div>
-            <NotificationsPopover expiring={expiring} />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setAboutOpen(true)}
+                aria-label="À propos"
+                className="shrink-0 rounded-full w-10 h-10 bg-white/15 backdrop-blur border-white/30 text-white hover:bg-white/25 hover:text-white"
+              >
+                <Info className="w-4 h-4" />
+              </Button>
+              <NotificationsPopover expiring={expiring} />
+            </div>
           </div>
 
           {/* Stat cards */}
@@ -334,38 +351,70 @@ function Index() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-3 sm:px-4 -mt-4">
-        <Tabs value={activeTeam} onValueChange={(v) => setActiveTeam(v as Team)}>
-          <div className="rounded-2xl bg-card shadow-sm border p-1.5 overflow-x-auto">
-            <TabsList className="bg-transparent h-auto gap-1 w-full grid grid-cols-4 min-w-[380px]">
-              {TEAMS.map((t) => {
-                const count = people.filter((p) => p.team === t).length;
-                return (
-                  <TabsTrigger
-                    key={t}
-                    value={t}
-                    className="flex-col gap-0.5 py-2 px-1 rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow"
-                  >
-                    <span className="text-[11px] font-semibold">{TEAM_SHORT[t]}</span>
-                    <span className="text-[10px] opacity-70">{count} pers.</span>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-          </div>
+      <main className="mx-auto max-w-6xl px-3 sm:px-4 -mt-4 space-y-4">
+        {/* Search bar */}
+        <div className="relative rounded-2xl bg-card shadow-sm border">
+          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher un nom, grade, PPR ou CIN…"
+            className="pl-10 pr-10 h-12 rounded-2xl border-0 shadow-none focus-visible:ring-0 bg-transparent"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-muted text-muted-foreground"
+              aria-label="Effacer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
 
-          {TEAMS.map((t) => (
-            <TabsContent key={t} value={t} className="mt-4">
-              <TeamList
-                people={people.filter((p) => p.team === t)}
-                onDelete={deletePerson}
-                onOpenAbsence={setAbsencePerson}
-                onDeleteAbsence={deleteAbsence}
-              />
-            </TabsContent>
-          ))}
-        </Tabs>
+        {search.trim() ? (
+          <SearchResults
+            people={people}
+            query={search.trim()}
+            onDelete={deletePerson}
+            onOpenAbsence={setAbsencePerson}
+            onDeleteAbsence={deleteAbsence}
+          />
+        ) : (
+          <Tabs value={activeTeam} onValueChange={(v) => setActiveTeam(v as Team)}>
+            <div className="rounded-2xl bg-card shadow-sm border p-1.5 overflow-x-auto">
+              <TabsList className="bg-transparent h-auto gap-1 w-full grid grid-cols-4 min-w-[380px]">
+                {TEAMS.map((t) => {
+                  const count = people.filter((p) => p.team === t).length;
+                  return (
+                    <TabsTrigger
+                      key={t}
+                      value={t}
+                      className="flex-col gap-0.5 py-2 px-1 rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow"
+                    >
+                      <span className="text-[11px] font-semibold">{TEAM_SHORT[t]}</span>
+                      <span className="text-[10px] opacity-70">{count} pers.</span>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+            </div>
+
+            {TEAMS.map((t) => (
+              <TabsContent key={t} value={t} className="mt-4">
+                <TeamList
+                  people={people.filter((p) => p.team === t)}
+                  onDelete={deletePerson}
+                  onOpenAbsence={setAbsencePerson}
+                  onDeleteAbsence={deleteAbsence}
+                />
+              </TabsContent>
+            ))}
+          </Tabs>
+        )}
       </main>
+
+      <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
 
       <Dialog
         open={!!absencePerson}
@@ -724,5 +773,85 @@ function AddAbsenceDialog({
         </Button>
       </DialogFooter>
     </DialogContent>
+  );
+}
+
+function SearchResults({
+  people,
+  query,
+  onDelete,
+  onOpenAbsence,
+  onDeleteAbsence,
+}: {
+  people: Person[];
+  query: string;
+  onDelete: (id: string) => void;
+  onOpenAbsence: (p: Person) => void;
+  onDeleteAbsence: (personId: string, absenceId: string) => void;
+}) {
+  const q = query.toLowerCase();
+  const matches = people.filter(
+    (p) =>
+      p.nom.toLowerCase().includes(q) ||
+      p.grade.toLowerCase().includes(q) ||
+      p.ppr.toLowerCase().includes(q) ||
+      p.cin.toLowerCase().includes(q),
+  );
+  return (
+    <div className="space-y-3">
+      <div className="text-xs text-muted-foreground px-1">
+        {matches.length} résultat(s) pour « {query} »
+      </div>
+      <TeamList
+        people={matches}
+        onDelete={onDelete}
+        onOpenAbsence={onOpenAbsence}
+        onDeleteAbsence={onDeleteAbsence}
+      />
+    </div>
+  );
+}
+
+function AboutDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" /> À propos
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 text-sm">
+          <p className="text-muted-foreground leading-relaxed">
+            Application de gestion des congés administratifs, congés maladie,
+            permissions et récupérations du personnel. Organisez vos équipes
+            (Équipe A, Équipe B, Standardistes, Service administratif),
+            enregistrez les absences, recevez des notifications à l'approche
+            des expirations et exportez toutes les données au format CSV/Excel.
+          </p>
+          <div className="rounded-2xl border p-4 bg-muted/40 space-y-2">
+            <div className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
+              Développeur
+            </div>
+            <div className="font-semibold text-base">Ayoub Sadkouni</div>
+            <a
+              href="mailto:sadkouni1@gmail.com"
+              className="inline-flex items-center gap-2 text-primary hover:underline text-sm"
+            >
+              <Mail className="w-4 h-4" /> sadkouni1@gmail.com
+            </a>
+          </div>
+          <div className="text-[11px] text-muted-foreground text-center">
+            Données stockées localement sur votre appareil.
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
