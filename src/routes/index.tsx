@@ -68,8 +68,10 @@ interface Absence {
   motif: Motif;
   dateDebut: string;
   dateFin: string;
+  dateReprise?: string;
   note?: string;
 }
+
 
 interface Person {
   id: string;
