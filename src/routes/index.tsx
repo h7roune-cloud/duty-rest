@@ -182,6 +182,8 @@ function Index() {
   const [activeTeam, setActiveTeam] = useState<Team>("Equipe A");
   const [addPersonOpen, setAddPersonOpen] = useState(false);
   const [absencePerson, setAbsencePerson] = useState<Person | null>(null);
+  const [search, setSearch] = useState("");
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   useEffect(() => {
     setPeople(loadPeople());
