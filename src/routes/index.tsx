@@ -859,12 +859,14 @@ function SearchResults({
   onDelete,
   onOpenAbsence,
   onDeleteAbsence,
+  repriseTodayIds,
 }: {
   people: Person[];
   query: string;
   onDelete: (id: string) => void;
   onOpenAbsence: (p: Person) => void;
   onDeleteAbsence: (personId: string, absenceId: string) => void;
+  repriseTodayIds: Set<string>;
 }) {
   const q = query.toLowerCase();
   const matches = people.filter(
@@ -884,10 +886,12 @@ function SearchResults({
         onDelete={onDelete}
         onOpenAbsence={onOpenAbsence}
         onDeleteAbsence={onDeleteAbsence}
+        repriseTodayIds={repriseTodayIds}
       />
     </div>
   );
 }
+
 
 function AboutDialog({
   open,
