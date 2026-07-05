@@ -772,7 +772,17 @@ function AddAbsenceDialog({
   const [motif, setMotif] = useState<Motif>("Congé administratif");
   const [dateDebut, setDateDebut] = useState("");
   const [dateFin, setDateFin] = useState("");
+  const [dateReprise, setDateReprise] = useState("");
+  const [repriseTouched, setRepriseTouched] = useState(false);
   const [note, setNote] = useState("");
+
+  // Auto-suggest reprise = dateFin + 1 unless user changed it
+  const handleFinChange = (v: string) => {
+    setDateFin(v);
+    if (v && !repriseTouched) {
+      setDateReprise(addDaysISO(v, 1));
+    }
+  };
 
   return (
     <DialogContent className="max-w-md rounded-2xl">
@@ -797,8 +807,20 @@ function AddAbsenceDialog({
           </div>
           <div>
             <Label>Date fin</Label>
-            <Input type="date" value={dateFin} onChange={(e) => setDateFin(e.target.value)} className="rounded-xl" />
+            <Input type="date" value={dateFin} onChange={(e) => handleFinChange(e.target.value)} className="rounded-xl" />
           </div>
+        </div>
+        <div>
+          <Label>Date de reprise de service</Label>
+          <Input
+            type="date"
+            value={dateReprise}
+            onChange={(e) => { setDateReprise(e.target.value); setRepriseTouched(true); }}
+            className="rounded-xl"
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Vous serez alerté(e) ce jour-là (nom clignotant en rouge).
+          </p>
         </div>
         <div>
           <Label>Note (optionnel)</Label>
@@ -812,7 +834,14 @@ function AddAbsenceDialog({
           onClick={() => {
             if (!dateDebut || !dateFin) return toast.error("Dates requises");
             if (dateFin < dateDebut) return toast.error("La date de fin doit être après la date de début");
-            onSubmit({ motif, dateDebut, dateFin, note: note.trim() || undefined });
+            if (dateReprise && dateReprise < dateFin) return toast.error("La reprise doit être après la date de fin");
+            onSubmit({
+              motif,
+              dateDebut,
+              dateFin,
+              dateReprise: dateReprise || addDaysISO(dateFin, 1),
+              note: note.trim() || undefined,
+            });
           }}
         >
           Enregistrer
@@ -821,6 +850,8 @@ function AddAbsenceDialog({
     </DialogContent>
   );
 }
+
+
 
 function SearchResults({
   people,
