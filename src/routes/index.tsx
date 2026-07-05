@@ -212,21 +212,31 @@ function Index() {
   }, [people, loaded]);
 
   const expiring = useMemo(() => {
-    const items: { person: Person; absence: Absence; days: number }[] = [];
+    const items: { person: Person; absence: Absence; days: number; reprise: string }[] = [];
     for (const p of people) {
       for (const a of p.absences) {
-        const d = daysUntil(a.dateFin);
-        if (d >= 0 && d <= 3) items.push({ person: p, absence: a, days: d });
+        const rep = repriseOf(a);
+        const d = daysUntil(rep);
+        if (d >= 0 && d <= 3) items.push({ person: p, absence: a, days: d, reprise: rep });
       }
     }
     return items.sort((a, b) => a.days - b.days);
   }, [people]);
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const repriseTodayIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of people) {
+      if (p.absences.some((a) => repriseOf(a) === todayStr)) s.add(p.id);
+    }
+    return s;
+  }, [people, todayStr]);
+
   const totalAbsences = useMemo(
     () => people.reduce((s, p) => s + p.absences.length, 0),
     [people],
   );
-  const todayStr = new Date().toISOString().slice(0, 10);
   const activeCount = useMemo(
     () =>
       people.filter((p) =>
@@ -238,17 +248,19 @@ function Index() {
   useEffect(() => {
     if (!loaded) return;
     for (const e of expiring) {
-      const key = `notified-${e.absence.id}-${e.days}`;
+      const key = `notified-reprise-${e.absence.id}-${e.days}`;
       if (!sessionStorage.getItem(key)) {
-        toast.warning(`Expiration proche : ${e.person.nom}`, {
-          description: `${e.absence.motif} se termine ${
+        toast.warning(`Reprise de service : ${e.person.nom}`, {
+          description: `${e.absence.motif} · reprise ${
             e.days === 0 ? "aujourd'hui" : `dans ${e.days} jour(s)`
-          } (${fmt(e.absence.dateFin)})`,
+          } (${fmt(e.reprise)})`,
+          duration: e.days === 0 ? 10000 : 5000,
         });
         sessionStorage.setItem(key, "1");
       }
     }
   }, [expiring, loaded]);
+
 
   const addPerson = (p: Omit<Person, "id" | "absences">) => {
     setPeople((prev) => [...prev, { ...p, id: crypto.randomUUID(), absences: [] }]);
