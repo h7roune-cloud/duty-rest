@@ -660,6 +660,10 @@ function TeamList({
                           <div className="text-muted-foreground truncate">
                             {fmt(a.dateDebut)} → {fmt(a.dateFin)}
                           </div>
+                          <div className="text-[10px] text-muted-foreground/80 truncate">
+                            Reprise : {fmt(repriseOf(a))}
+                          </div>
+
                         </div>
                         <button
                           onClick={() => onDeleteAbsence(p.id, a.id)}
