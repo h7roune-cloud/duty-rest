@@ -111,6 +111,17 @@ function fmt(d: string) {
   }
 }
 
+function addDaysISO(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function repriseOf(a: Absence): string {
+  return a.dateReprise || addDaysISO(a.dateFin, 1);
+}
+
+
 function initials(name: string) {
   return name
     .split(/\s+/)
