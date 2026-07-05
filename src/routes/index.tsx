@@ -299,7 +299,18 @@ function Index() {
                 </p>
               </div>
             </div>
-            <NotificationsPopover expiring={expiring} />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setAboutOpen(true)}
+                aria-label="À propos"
+                className="shrink-0 rounded-full w-10 h-10 bg-white/15 backdrop-blur border-white/30 text-white hover:bg-white/25 hover:text-white"
+              >
+                <Info className="w-4 h-4" />
+              </Button>
+              <NotificationsPopover expiring={expiring} />
+            </div>
           </div>
 
           {/* Stat cards */}
