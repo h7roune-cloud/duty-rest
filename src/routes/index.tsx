@@ -351,38 +351,70 @@ function Index() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-3 sm:px-4 -mt-4">
-        <Tabs value={activeTeam} onValueChange={(v) => setActiveTeam(v as Team)}>
-          <div className="rounded-2xl bg-card shadow-sm border p-1.5 overflow-x-auto">
-            <TabsList className="bg-transparent h-auto gap-1 w-full grid grid-cols-4 min-w-[380px]">
-              {TEAMS.map((t) => {
-                const count = people.filter((p) => p.team === t).length;
-                return (
-                  <TabsTrigger
-                    key={t}
-                    value={t}
-                    className="flex-col gap-0.5 py-2 px-1 rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow"
-                  >
-                    <span className="text-[11px] font-semibold">{TEAM_SHORT[t]}</span>
-                    <span className="text-[10px] opacity-70">{count} pers.</span>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-          </div>
+      <main className="mx-auto max-w-6xl px-3 sm:px-4 -mt-4 space-y-4">
+        {/* Search bar */}
+        <div className="relative rounded-2xl bg-card shadow-sm border">
+          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher un nom, grade, PPR ou CIN…"
+            className="pl-10 pr-10 h-12 rounded-2xl border-0 shadow-none focus-visible:ring-0 bg-transparent"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-muted text-muted-foreground"
+              aria-label="Effacer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
 
-          {TEAMS.map((t) => (
-            <TabsContent key={t} value={t} className="mt-4">
-              <TeamList
-                people={people.filter((p) => p.team === t)}
-                onDelete={deletePerson}
-                onOpenAbsence={setAbsencePerson}
-                onDeleteAbsence={deleteAbsence}
-              />
-            </TabsContent>
-          ))}
-        </Tabs>
+        {search.trim() ? (
+          <SearchResults
+            people={people}
+            query={search.trim()}
+            onDelete={deletePerson}
+            onOpenAbsence={setAbsencePerson}
+            onDeleteAbsence={deleteAbsence}
+          />
+        ) : (
+          <Tabs value={activeTeam} onValueChange={(v) => setActiveTeam(v as Team)}>
+            <div className="rounded-2xl bg-card shadow-sm border p-1.5 overflow-x-auto">
+              <TabsList className="bg-transparent h-auto gap-1 w-full grid grid-cols-4 min-w-[380px]">
+                {TEAMS.map((t) => {
+                  const count = people.filter((p) => p.team === t).length;
+                  return (
+                    <TabsTrigger
+                      key={t}
+                      value={t}
+                      className="flex-col gap-0.5 py-2 px-1 rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow"
+                    >
+                      <span className="text-[11px] font-semibold">{TEAM_SHORT[t]}</span>
+                      <span className="text-[10px] opacity-70">{count} pers.</span>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+            </div>
+
+            {TEAMS.map((t) => (
+              <TabsContent key={t} value={t} className="mt-4">
+                <TeamList
+                  people={people.filter((p) => p.team === t)}
+                  onDelete={deletePerson}
+                  onOpenAbsence={setAbsencePerson}
+                  onDeleteAbsence={deleteAbsence}
+                />
+              </TabsContent>
+            ))}
+          </Tabs>
+        )}
       </main>
+
+      <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
 
       <Dialog
         open={!!absencePerson}
