@@ -32,6 +32,10 @@ import {
   UserPlus,
   Sparkles,
   ChevronRight,
+  Search,
+  Info,
+  Mail,
+  X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
