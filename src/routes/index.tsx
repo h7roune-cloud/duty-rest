@@ -407,6 +407,7 @@ function Index() {
             onDelete={deletePerson}
             onOpenAbsence={setAbsencePerson}
             onDeleteAbsence={deleteAbsence}
+            repriseTodayIds={repriseTodayIds}
           />
         ) : (
           <Tabs value={activeTeam} onValueChange={(v) => setActiveTeam(v as Team)}>
@@ -435,9 +436,11 @@ function Index() {
                   onDelete={deletePerson}
                   onOpenAbsence={setAbsencePerson}
                   onDeleteAbsence={deleteAbsence}
+                  repriseTodayIds={repriseTodayIds}
                 />
               </TabsContent>
             ))}
+
           </Tabs>
         )}
       </main>
