@@ -560,11 +560,13 @@ function TeamList({
   onDelete,
   onOpenAbsence,
   onDeleteAbsence,
+  repriseTodayIds,
 }: {
   people: Person[];
   onDelete: (id: string) => void;
   onOpenAbsence: (p: Person) => void;
   onDeleteAbsence: (personId: string, absenceId: string) => void;
+  repriseTodayIds: Set<string>;
 }) {
   if (people.length === 0) {
     return (
@@ -586,32 +588,45 @@ function TeamList({
         const active = p.absences.find(
           (a) => a.dateDebut <= today && a.dateFin >= today,
         );
+        const repriseToday = repriseTodayIds.has(p.id);
         return (
           <div
             key={p.id}
-            className="group rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all overflow-hidden"
+            className={`group rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all overflow-hidden ${
+              repriseToday ? "border-destructive ring-2 ring-destructive/40" : ""
+            }`}
           >
             <button
               onClick={() => onOpenAbsence(p)}
               className="w-full text-left p-4 flex items-center gap-3 hover:bg-muted/40 transition-colors"
             >
               <div
-                className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow"
+                className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow ${
+                  repriseToday ? "pulse-ring" : ""
+                }`}
                 style={{ background: "var(--gradient-primary)" }}
               >
                 {initials(p.nom) || "?"}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-semibold truncate">{p.nom}</div>
+                <div className={`font-semibold truncate ${repriseToday ? "blink-red" : ""}`}>
+                  {p.nom}
+                </div>
                 <div className="text-xs text-muted-foreground truncate">
                   {p.grade || "—"}
                 </div>
                 <div className="text-[10px] text-muted-foreground/80 font-mono mt-0.5 truncate">
                   PPR {p.ppr || "—"} · CIN {p.cin || "—"}
                 </div>
+                {repriseToday && (
+                  <div className="text-[11px] font-bold text-destructive mt-1 uppercase tracking-wide">
+                    ● Reprise de service aujourd'hui
+                  </div>
+                )}
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
             </button>
+
 
             {active && (
               <div className="px-4 pb-2">
