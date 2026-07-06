@@ -569,12 +569,14 @@ function TeamList({
   onDelete,
   onOpenAbsence,
   onDeleteAbsence,
+  onOpenHistory,
   repriseTodayIds,
 }: {
   people: Person[];
   onDelete: (id: string) => void;
   onOpenAbsence: (p: Person) => void;
   onDeleteAbsence: (personId: string, absenceId: string) => void;
+  onOpenHistory: (p: Person) => void;
   repriseTodayIds: Set<string>;
 }) {
   if (people.length === 0) {
