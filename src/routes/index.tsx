@@ -408,6 +408,7 @@ function Index() {
             onDelete={deletePerson}
             onOpenAbsence={setAbsencePerson}
             onDeleteAbsence={deleteAbsence}
+            onOpenHistory={setHistoryPerson}
             repriseTodayIds={repriseTodayIds}
           />
         ) : (
@@ -437,6 +438,7 @@ function Index() {
                   onDelete={deletePerson}
                   onOpenAbsence={setAbsencePerson}
                   onDeleteAbsence={deleteAbsence}
+                  onOpenHistory={setHistoryPerson}
                   repriseTodayIds={repriseTodayIds}
                 />
               </TabsContent>
@@ -447,6 +449,12 @@ function Index() {
       </main>
 
       <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
+
+      <HistoryDialog
+        person={historyPerson ? people.find((p) => p.id === historyPerson.id) ?? null : null}
+        onOpenChange={(v) => !v && setHistoryPerson(null)}
+      />
+
 
       <Dialog
         open={!!absencePerson}
