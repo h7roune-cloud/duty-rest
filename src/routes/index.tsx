@@ -136,56 +136,167 @@ function csvEscape(v: string) {
   return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-function exportCSV(people: Person[]) {
-  const rows: string[] = [];
-  rows.push(
-    [
-      "Nom",
-      "Grade",
-      "PPR",
-      "CIN",
-      "Equipe",
-      "Motif",
-      "Date debut",
-      "Date fin",
-      "Date reprise",
-      "Duree (jours)",
-      "Note",
-    ].join(";"),
-  );
+const MOTIF_HEX: Record<string, string> = {
+  "Congé administratif": "FFDBEAFE",
+  "Congé maladie": "FFFECACA",
+  "Congé de naissance": "FFFBCFE8",
+  Permission: "FFFDE68A",
+  Récupération: "FFA7F3D0",
+  Mission: "FFC7D2FE",
+  Formation: "FFE9D5FF",
+  Autre: "FFE2E8F0",
+};
+
+async function exportExcel(people: Person[]) {
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Ayoub Sadkouni";
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet("Congés", {
+    views: [{ state: "frozen", ySplit: 3 }],
+  });
+
+  const headers = [
+    "Nom",
+    "Grade",
+    "PPR",
+    "CIN",
+    "Équipe",
+    "Motif",
+    "Date début",
+    "Date fin",
+    "Date reprise",
+    "Durée (j)",
+    "Note",
+  ];
+
+  // Title row
+  ws.mergeCells(1, 1, 1, headers.length);
+  const titleCell = ws.getCell(1, 1);
+  titleCell.value = `Gestion des Congés — Export du ${new Date().toLocaleDateString("fr-FR")}`;
+  titleCell.font = { name: "Calibri", size: 16, bold: true, color: { argb: "FFFFFFFF" } };
+  titleCell.alignment = { vertical: "middle", horizontal: "center" };
+  titleCell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF0F766E" },
+  };
+  ws.getRow(1).height = 32;
+
+  // Subtitle
+  ws.mergeCells(2, 1, 2, headers.length);
+  const subCell = ws.getCell(2, 1);
+  subCell.value = `${people.length} personnel · ${people.reduce((s, p) => s + p.absences.length, 0)} absence(s)`;
+  subCell.font = { name: "Calibri", size: 10, italic: true, color: { argb: "FF64748B" } };
+  subCell.alignment = { vertical: "middle", horizontal: "center" };
+  ws.getRow(2).height = 20;
+
+  // Header row
+  const headerRow = ws.getRow(3);
+  headers.forEach((h, i) => {
+    const c = headerRow.getCell(i + 1);
+    c.value = h;
+    c.font = { name: "Calibri", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
+    c.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF0EA5E9" },
+    };
+    c.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    c.border = {
+      top: { style: "thin", color: { argb: "FFCBD5E1" } },
+      bottom: { style: "medium", color: { argb: "FF0369A1" } },
+      left: { style: "thin", color: { argb: "FFCBD5E1" } },
+      right: { style: "thin", color: { argb: "FFCBD5E1" } },
+    };
+  });
+  headerRow.height = 26;
+
+  // Data rows
+  let rowIndex = 4;
+  let dataCount = 0;
   for (const p of people) {
     if (p.absences.length === 0) continue;
     for (const a of p.absences) {
-      const dur =
-        Math.max(0, daysUntil(a.dateFin) - daysUntil(a.dateDebut)) + 1;
-      rows.push(
-        [
-          p.nom,
-          p.grade,
-          p.ppr,
-          p.cin,
-          p.team,
-          a.motif,
-          a.dateDebut,
-          a.dateFin,
-          repriseOf(a),
-          String(dur),
-          a.note ?? "",
-        ]
-          .map(csvEscape)
-          .join(";"),
-      );
+      const dur = Math.max(0, daysUntil(a.dateFin) - daysUntil(a.dateDebut)) + 1;
+      const row = ws.getRow(rowIndex);
+      const values = [
+        p.nom,
+        p.grade,
+        p.ppr,
+        p.cin,
+        p.team,
+        a.motif,
+        new Date(a.dateDebut),
+        new Date(a.dateFin),
+        new Date(repriseOf(a)),
+        dur,
+        a.note ?? "",
+      ];
+      values.forEach((v, i) => {
+        const c = row.getCell(i + 1);
+        c.value = v as never;
+        c.alignment = { vertical: "middle", horizontal: i >= 6 && i <= 9 ? "center" : "left", wrapText: true };
+        c.font = { name: "Calibri", size: 10 };
+        c.border = {
+          top: { style: "hair", color: { argb: "FFE2E8F0" } },
+          bottom: { style: "hair", color: { argb: "FFE2E8F0" } },
+          left: { style: "hair", color: { argb: "FFE2E8F0" } },
+          right: { style: "hair", color: { argb: "FFE2E8F0" } },
+        };
+        if (dataCount % 2 === 1) {
+          c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+        }
+      });
+      // Date formatting
+      row.getCell(7).numFmt = "dd/mm/yyyy";
+      row.getCell(8).numFmt = "dd/mm/yyyy";
+      row.getCell(9).numFmt = "dd/mm/yyyy";
+      // Motif colored badge
+      const motifCell = row.getCell(6);
+      motifCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: MOTIF_HEX[a.motif] ?? "FFE2E8F0" },
+      };
+      motifCell.font = { name: "Calibri", size: 10, bold: true, color: { argb: "FF1E293B" } };
+      motifCell.alignment = { vertical: "middle", horizontal: "center" };
+      row.height = 22;
+      rowIndex++;
+      dataCount++;
     }
   }
 
-  // BOM for Excel UTF-8
-  const blob = new Blob(["\uFEFF" + rows.join("\n")], {
-    type: "text/csv;charset=utf-8;",
+  // Column widths
+  const widths = [24, 20, 12, 12, 20, 22, 13, 13, 13, 10, 30];
+  widths.forEach((w, i) => (ws.getColumn(i + 1).width = w));
+
+  // Empty state
+  if (dataCount === 0) {
+    ws.mergeCells(4, 1, 4, headers.length);
+    const c = ws.getCell(4, 1);
+    c.value = "Aucune absence enregistrée.";
+    c.alignment = { horizontal: "center", vertical: "middle" };
+    c.font = { italic: true, color: { argb: "FF94A3B8" } };
+  }
+
+  // Footer
+  const footerRow = rowIndex + 1;
+  ws.mergeCells(footerRow, 1, footerRow, headers.length);
+  const foot = ws.getCell(footerRow, 1);
+  foot.value = "Application développée par Ayoub Sadkouni — sadkouni1@gmail.com";
+  foot.font = { size: 9, italic: true, color: { argb: "FF94A3B8" } };
+  foot.alignment = { horizontal: "center" };
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `conges_${new Date().toISOString().slice(0, 10)}.csv`;
+  link.download = `conges_${new Date().toISOString().slice(0, 10)}.xlsx`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
