@@ -402,13 +402,17 @@ function Index() {
     );
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (totalAbsences === 0) {
       toast.error("Aucune absence à exporter");
       return;
     }
-    exportCSV(people);
-    toast.success("Export CSV téléchargé");
+    try {
+      await exportExcel(people);
+      toast.success("Fichier Excel téléchargé");
+    } catch {
+      toast.error("Erreur lors de l'export");
+    }
   };
 
   return (
