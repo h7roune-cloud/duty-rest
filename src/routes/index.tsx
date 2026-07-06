@@ -881,6 +881,7 @@ function SearchResults({
   onDelete,
   onOpenAbsence,
   onDeleteAbsence,
+  onOpenHistory,
   repriseTodayIds,
 }: {
   people: Person[];
@@ -888,6 +889,7 @@ function SearchResults({
   onDelete: (id: string) => void;
   onOpenAbsence: (p: Person) => void;
   onDeleteAbsence: (personId: string, absenceId: string) => void;
+  onOpenHistory: (p: Person) => void;
   repriseTodayIds: Set<string>;
 }) {
   const q = query.toLowerCase();
@@ -908,9 +910,145 @@ function SearchResults({
         onDelete={onDelete}
         onOpenAbsence={onOpenAbsence}
         onDeleteAbsence={onDeleteAbsence}
+        onOpenHistory={onOpenHistory}
         repriseTodayIds={repriseTodayIds}
       />
     </div>
+  );
+}
+
+function HistoryDialog({
+  person,
+  onOpenChange,
+}: {
+  person: Person | null;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const year = new Date().getFullYear();
+  const yearAbs = useMemo(() => {
+    if (!person) return [];
+    return person.absences
+      .filter((a) => {
+        const y1 = new Date(a.dateDebut).getFullYear();
+        const y2 = new Date(a.dateFin).getFullYear();
+        return y1 === year || y2 === year;
+      })
+      .sort((a, b) => b.dateDebut.localeCompare(a.dateDebut));
+  }, [person, year]);
+
+  // Compute days per motif, counting only days that fall inside the current year
+  const totals = useMemo(() => {
+    const map = new Map<Motif, number>();
+    if (!person) return map;
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year, 11, 31);
+    for (const a of person.absences) {
+      const start = new Date(a.dateDebut);
+      const end = new Date(a.dateFin);
+      const s = start < yearStart ? yearStart : start;
+      const e = end > yearEnd ? yearEnd : end;
+      if (s > e) continue;
+      const days = Math.round((e.getTime() - s.getTime()) / 86400000) + 1;
+      map.set(a.motif, (map.get(a.motif) ?? 0) + days);
+    }
+    return map;
+  }, [person, year]);
+
+  const totalDays = Array.from(totals.values()).reduce((s, n) => s + n, 0);
+
+  return (
+    <Dialog open={!!person} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg rounded-2xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CalendarIcon className="w-5 h-5 text-primary" />
+            Historique {year}
+          </DialogTitle>
+          {person && (
+            <p className="text-sm text-muted-foreground">
+              {person.nom} · {person.grade || "—"} · {person.team}
+            </p>
+          )}
+        </DialogHeader>
+
+        <div className="overflow-auto space-y-4 pr-1">
+          {/* Totals per motif */}
+          <div>
+            <div className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground mb-2">
+              Total par motif ({totalDays} jour{totalDays > 1 ? "s" : ""})
+            </div>
+            {totals.size === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center rounded-xl bg-muted/40">
+                Aucune absence enregistrée en {year}.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {Array.from(totals.entries())
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([motif, days]) => (
+                    <div
+                      key={motif}
+                      className={`rounded-xl border px-3 py-2 ${MOTIF_COLORS[motif]}`}
+                    >
+                      <div className="text-[11px] font-semibold truncate">{motif}</div>
+                      <div className="text-lg font-bold leading-tight">
+                        {days} <span className="text-xs font-normal">j</span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* Detailed list */}
+          {yearAbs.length > 0 && (
+            <div>
+              <div className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground mb-2">
+                Détail ({yearAbs.length})
+              </div>
+              <ul className="space-y-2">
+                {yearAbs.map((a) => {
+                  const dur =
+                    Math.round(
+                      (new Date(a.dateFin).getTime() -
+                        new Date(a.dateDebut).getTime()) /
+                        86400000,
+                    ) + 1;
+                  return (
+                    <li
+                      key={a.id}
+                      className="rounded-xl border p-3 bg-card space-y-1"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={`text-[11px] px-2 py-0.5 rounded border font-medium ${MOTIF_COLORS[a.motif]}`}
+                        >
+                          {a.motif}
+                        </span>
+                        <span className="text-[11px] font-semibold text-muted-foreground">
+                          {dur} j
+                        </span>
+                      </div>
+                      <div className="text-sm">
+                        {fmt(a.dateDebut)} → {fmt(a.dateFin)}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        Reprise : {fmt(repriseOf(a))}
+                      </div>
+                      {a.note && (
+                        <div className="text-xs text-muted-foreground italic">
+                          « {a.note} »
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
