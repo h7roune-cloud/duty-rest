@@ -651,9 +651,16 @@ function TeamList({
 
             {p.absences.length > 0 && (
               <div className="px-4 pb-3 border-t pt-3">
-                <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                  Historique ({p.absences.length})
-                </div>
+                <button
+                  onClick={() => onOpenHistory(p)}
+                  className="w-full flex items-center justify-between mb-1.5 group/hist"
+                  aria-label="Voir historique annuel"
+                >
+                  <span className="text-[11px] font-semibold text-primary uppercase tracking-wide group-hover/hist:underline">
+                    Historique ({p.absences.length}) · voir l'année
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 text-primary" />
+                </button>
                 <ul className="space-y-1.5 max-h-40 overflow-auto">
                   {[...p.absences]
                     .sort((a, b) => b.dateDebut.localeCompare(a.dateDebut))
