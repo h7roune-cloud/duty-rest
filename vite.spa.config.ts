@@ -37,6 +37,10 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: path.resolve(__dirname, "index.spa.html"),
+      output: {
+        entryFileNames: "assets/[name]-[hash].js",
+      },
     },
   },
 });
+
