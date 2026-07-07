@@ -1,0 +1,8 @@
+{
+  "$schema": "https://capacitorjs.com/schemas/assets.json",
+  "icon": "assets/icon.png",
+  "iconBackgroundColor": "#0EA5E9",
+  "splash": "assets/splash.png",
+  "splashBackgroundColor": "#0EA5E9",
+  "splashDarkBackgroundColor": "#0EA5E9"
+}
