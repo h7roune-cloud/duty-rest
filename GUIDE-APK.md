@@ -1,6 +1,6 @@
 # 📱 Guide APK Android — Application 100% hors-ligne
 
-Cette application peut maintenant être compilée en APK **entièrement local** (aucune connexion Internet requise) grâce à Capacitor.
+Application compilable en APK **entièrement local** grâce à Capacitor, avec icône et écran de démarrage personnalisés.
 
 > Développeur : **Ayoub Sadkouni** — 📧 sadkouni1@gmail.com
 
@@ -10,87 +10,125 @@ Cette application peut maintenant être compilée en APK **entièrement local** 
 
 1. **Node.js 20+** → https://nodejs.org
 2. **Android Studio** → https://developer.android.com/studio
-3. **Java JDK 17** (souvent installé avec Android Studio)
+3. **Java JDK 17**
 
 ---
 
-## 🚀 Étapes (depuis la racine du projet)
+## 🚀 Étapes complètes
 
-### 1. Installer Capacitor
+### 1. Installer Capacitor + plugin Splash + générateur d'icônes
 
 ```bash
-npm install @capacitor/core @capacitor/cli @capacitor/android
+npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/splash-screen
+npm install -D @capacitor/assets
 ```
 
-### 2. Générer le build statique SPA
+### 2. Générer le build statique (app hors-ligne)
 
 ```bash
 npm run build:spa
 ```
 
-Cela crée un dossier `dist-spa/` contenant `index.html` + assets — l'app complète, hors-ligne.
+→ crée `dist-spa/index.html` avec tous les assets.
 
-### 3. Ajouter la plateforme Android (première fois seulement)
+### 3. Ajouter la plateforme Android (première fois)
 
 ```bash
 npx cap add android
 ```
 
-> `capacitor.config.ts` est déjà configuré (`webDir: "dist-spa"`, `appId: com.ayoub.conges`).
+> `capacitor.config.ts` est déjà configuré :
+> - `appId: com.ayoub.conges`
+> - `appName: Gestion Congés`
+> - `webDir: dist-spa`
+> - Splash screen bleu `#0EA5E9`, 1.5 s, plein écran
 
-### 4. Synchroniser les fichiers dans le projet Android
+### 4. Générer icônes + splash screen pour toutes les tailles
+
+Les images sources sont déjà fournies :
+- `assets/icon.png` (1024×1024) — icône de l'app
+- `assets/splash.png` (1920×1920) — écran de démarrage
+- `assets/assets.config.json` — configuration des couleurs
+
+Lancez la génération :
+
+```bash
+npx capacitor-assets generate --android
+```
+
+Cela crée automatiquement toutes les tailles requises par Android (mdpi → xxxhdpi, adaptive icons, splashscreens portrait/paysage) dans `android/app/src/main/res/`.
+
+### 5. Synchroniser dans le projet Android
 
 ```bash
 npx cap sync android
 ```
 
-### 5. Ouvrir dans Android Studio
+### 6. Ouvrir dans Android Studio
 
 ```bash
 npx cap open android
 ```
 
-### 6. Générer l'APK
+### 7. Générer l'APK
 
 Dans Android Studio :
-1. Menu **Build** → **Build Bundle(s) / APK(s)** → **Build APK(s)**
-2. Attendez la compilation (2–5 min la première fois)
-3. Cliquez sur **locate** dans la notification
-4. Fichier : `android/app/build/outputs/apk/debug/app-debug.apk`
+1. **Build** → **Build Bundle(s) / APK(s)** → **Build APK(s)**
+2. Notification → **locate** → `android/app/build/outputs/apk/debug/app-debug.apk`
 
-### 7. Installer sur téléphone
+### 8. Installer sur le téléphone
 
-Copiez l'APK sur votre Android → ouvrez → autorisez "Sources inconnues" → installez ✅
-
-L'application fonctionne **sans Internet**.
+Copiez l'APK, ouvrez-le, autorisez "Sources inconnues", installez ✅
+L'app démarre avec l'icône calendrier + splash bleu, puis fonctionne **sans Internet**.
 
 ---
 
-## 🔄 Mettre à jour l'app plus tard
+## 🎨 Personnaliser icône ou splash
 
-Après chaque modification :
+1. Remplacez `assets/icon.png` (1024×1024 PNG) et/ou `assets/splash.png` (2732×2732 PNG recommandé, minimum 1920×1920).
+2. Ajustez les couleurs dans `assets/assets.config.json` et `capacitor.config.ts` (`backgroundColor`).
+3. Relancez :
+
+```bash
+npx capacitor-assets generate --android
+npx cap sync android
+```
+
+Puis rebuild dans Android Studio.
+
+---
+
+## 🔄 Mettre à jour le code de l'app
 
 ```bash
 npm run build:spa
 npx cap sync android
 ```
 
-Puis rebuild dans Android Studio (étape 6).
+Puis rebuild APK dans Android Studio.
 
 ---
 
-## 🎨 Personnalisation
+## 🏷️ Changer le nom affiché
 
-- **Icône** : clic droit sur `android/app/src/main/res` → **New → Image Asset** → Launcher Icons
-- **Nom affiché** : `android/app/src/main/res/values/strings.xml` → `<string name="app_name">…</string>`
-- **ID de l'app** : modifier `appId` dans `capacitor.config.ts` avant `npx cap add android`
+Modifiez `appName` dans `capacitor.config.ts`, puis :
+
+```bash
+npx cap sync android
+```
+
+Ou éditez directement `android/app/src/main/res/values/strings.xml` :
+
+```xml
+<string name="app_name">Gestion Congés</string>
+```
 
 ---
 
 ## 🔐 APK signé (Play Store)
 
-Dans Android Studio : **Build → Generate Signed Bundle / APK** → APK → créez un keystore → **release** → Finish.
-APK : `android/app/release/`
+Dans Android Studio : **Build → Generate Signed Bundle / APK** → APK → créez un keystore (à conserver précieusement !) → **release** → Finish.
+APK signé dans `android/app/release/`.
 
 ---
 
@@ -98,10 +136,12 @@ APK : `android/app/release/`
 
 | Problème | Solution |
 |---|---|
+| `capacitor-assets: command not found` | `npm install -D @capacitor/assets` puis relancer avec `npx` |
+| Icône par défaut Android affichée | Vérifier que `npx capacitor-assets generate --android` a bien été exécuté APRÈS `npx cap add android` |
+| Splash blanc au lieu de bleu | Relancer `npx cap sync android` après modification de `capacitor.config.ts` |
 | "SDK not found" | Android Studio → SDK Manager → installer Android SDK 34 |
-| Écran blanc | Vérifiez que `npm run build:spa` a bien produit `dist-spa/index.html`, puis relancez `npx cap sync android` |
-| Erreur Java | Installez JDK 17, redémarrez Android Studio |
-| Données perdues | L'app utilise le `localStorage` du WebView — sauvegardez via l'export Excel avant réinstallation |
+| Écran blanc dans l'app | Vérifier `dist-spa/index.html`, relancer `npx cap sync android` |
+| Erreur Java | Installer JDK 17, redémarrer Android Studio |
 
 ---
 
