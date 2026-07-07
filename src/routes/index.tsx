@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +36,20 @@ import {
   Info,
   Mail,
   X,
+  FileSpreadsheet,
+  Save,
+  Upload,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -415,6 +428,78 @@ function Index() {
     }
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBackup = () => {
+    try {
+      const payload = {
+        app: "gestion-conges",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        peopleCount: people.length,
+        absenceCount: totalAbsences,
+        people,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `sauvegarde-conges-${stamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Sauvegarde téléchargée", {
+        description: `${people.length} personne(s) · ${totalAbsences} absence(s)`,
+      });
+    } catch {
+      toast.error("Erreur lors de la sauvegarde");
+    }
+  };
+
+  const handleRestoreFile = async (file: File) => {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text) as {
+        app?: string;
+        people?: Person[];
+      };
+      if (!data || !Array.isArray(data.people)) {
+        toast.error("Fichier invalide", {
+          description: "Format non reconnu",
+        });
+        return;
+      }
+      // Basic shape validation
+      const restored = data.people
+        .filter((p) => p && typeof p.nom === "string" && Array.isArray(p.absences))
+        .map((p) => ({
+          ...p,
+          id: p.id ?? crypto.randomUUID(),
+          absences: p.absences.map((a) => ({
+            ...a,
+            id: a.id ?? crypto.randomUUID(),
+          })),
+        }));
+      const ok = window.confirm(
+        `Restaurer ${restored.length} personne(s) ?\n\nCela remplacera toutes vos données actuelles (${people.length} personne(s)).`,
+      );
+      if (!ok) return;
+      setPeople(restored);
+      toast.success("Données restaurées", {
+        description: `${restored.length} personne(s) importée(s)`,
+      });
+    } catch {
+      toast.error("Fichier illisible", {
+        description: "Vérifiez que c'est bien un fichier de sauvegarde JSON",
+      });
+    }
+  };
+
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <Toaster richColors position="top-center" />
@@ -483,14 +568,61 @@ function Index() {
                 }}
               />
             </Dialog>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={handleExport}
-              className="w-full bg-white/10 text-white border-white/30 hover:bg-white/20 hover:text-white backdrop-blur font-semibold"
-            >
-              <Download className="w-4 h-4" /> Exporter
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full bg-white/10 text-white border-white/30 hover:bg-white/20 hover:text-white backdrop-blur font-semibold"
+                >
+                  <Download className="w-4 h-4" /> Données
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>Exporter</DropdownMenuLabel>
+                <DropdownMenuItem onClick={handleExport}>
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <div className="flex flex-col">
+                    <span>Fichier Excel</span>
+                    <span className="text-xs text-muted-foreground">
+                      Rapport imprimable (.xlsx)
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleBackup}>
+                  <Save className="w-4 h-4" />
+                  <div className="flex flex-col">
+                    <span>Sauvegarde complète</span>
+                    <span className="text-xs text-muted-foreground">
+                      Fichier .json pour restauration
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Importer</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="w-4 h-4" />
+                  <div className="flex flex-col">
+                    <span>Restaurer une sauvegarde</span>
+                    <span className="text-xs text-muted-foreground">
+                      Depuis un fichier .json
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleRestoreFile(file);
+                e.target.value = "";
+              }}
+            />
+
           </div>
         </div>
       </header>
