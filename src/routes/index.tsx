@@ -428,6 +428,78 @@ function Index() {
     }
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBackup = () => {
+    try {
+      const payload = {
+        app: "gestion-conges",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        peopleCount: people.length,
+        absenceCount: totalAbsences,
+        people,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `sauvegarde-conges-${stamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Sauvegarde téléchargée", {
+        description: `${people.length} personne(s) · ${totalAbsences} absence(s)`,
+      });
+    } catch {
+      toast.error("Erreur lors de la sauvegarde");
+    }
+  };
+
+  const handleRestoreFile = async (file: File) => {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text) as {
+        app?: string;
+        people?: Person[];
+      };
+      if (!data || !Array.isArray(data.people)) {
+        toast.error("Fichier invalide", {
+          description: "Format non reconnu",
+        });
+        return;
+      }
+      // Basic shape validation
+      const restored = data.people
+        .filter((p) => p && typeof p.nom === "string" && Array.isArray(p.absences))
+        .map((p) => ({
+          ...p,
+          id: p.id ?? crypto.randomUUID(),
+          absences: p.absences.map((a) => ({
+            ...a,
+            id: a.id ?? crypto.randomUUID(),
+          })),
+        }));
+      const ok = window.confirm(
+        `Restaurer ${restored.length} personne(s) ?\n\nCela remplacera toutes vos données actuelles (${people.length} personne(s)).`,
+      );
+      if (!ok) return;
+      setPeople(restored);
+      toast.success("Données restaurées", {
+        description: `${restored.length} personne(s) importée(s)`,
+      });
+    } catch {
+      toast.error("Fichier illisible", {
+        description: "Vérifiez que c'est bien un fichier de sauvegarde JSON",
+      });
+    }
+  };
+
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <Toaster richColors position="top-center" />
