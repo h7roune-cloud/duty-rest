@@ -568,14 +568,61 @@ function Index() {
                 }}
               />
             </Dialog>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={handleExport}
-              className="w-full bg-white/10 text-white border-white/30 hover:bg-white/20 hover:text-white backdrop-blur font-semibold"
-            >
-              <Download className="w-4 h-4" /> Exporter
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full bg-white/10 text-white border-white/30 hover:bg-white/20 hover:text-white backdrop-blur font-semibold"
+                >
+                  <Download className="w-4 h-4" /> Données
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>Exporter</DropdownMenuLabel>
+                <DropdownMenuItem onClick={handleExport}>
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <div className="flex flex-col">
+                    <span>Fichier Excel</span>
+                    <span className="text-xs text-muted-foreground">
+                      Rapport imprimable (.xlsx)
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleBackup}>
+                  <Save className="w-4 h-4" />
+                  <div className="flex flex-col">
+                    <span>Sauvegarde complète</span>
+                    <span className="text-xs text-muted-foreground">
+                      Fichier .json pour restauration
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Importer</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="w-4 h-4" />
+                  <div className="flex flex-col">
+                    <span>Restaurer une sauvegarde</span>
+                    <span className="text-xs text-muted-foreground">
+                      Depuis un fichier .json
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleRestoreFile(file);
+                e.target.value = "";
+              }}
+            />
+
           </div>
         </div>
       </header>
