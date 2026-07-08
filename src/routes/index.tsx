@@ -73,6 +73,7 @@ interface Person {
 }
 
 const STORAGE_KEY = "conges-personnel-v1";
+const SEARCH_RESULT_LIMIT = 60;
 
 function loadPeople(): Person[] {
   if (typeof window === "undefined") return [];
@@ -366,19 +367,15 @@ function Index() {
 
   useEffect(() => {
     if (!loaded) return;
-    for (const e of expiring) {
-      const key = `notified-reprise-${e.absence.id}-${e.days}`;
-      if (!sessionStorage.getItem(key)) {
-        toast.warning(`Reprise de service : ${e.person.nom}`, {
-          description: `${e.absence.motif} · reprise ${
-            e.days === 0 ? "aujourd'hui" : `dans ${e.days} jour(s)`
-          } (${fmt(e.reprise)})`,
-          duration: e.days === 0 ? 10000 : 5000,
-        });
-        sessionStorage.setItem(key, "1");
-      }
-    }
-  }, [expiring, loaded]);
+    if (expiring.length === 0) return;
+    const key = `notified-reprise-summary-${todayStr}`;
+    if (sessionStorage.getItem(key)) return;
+    toast.warning("Reprises de service proches", {
+      description: `${expiring.length} notification(s) à consulter avec l’icône cloche`,
+      duration: 4000,
+    });
+    sessionStorage.setItem(key, "1");
+  }, [expiring, loaded, todayStr]);
 
 
   const addPerson = (p: Omit<Person, "id" | "absences">) => {
@@ -1169,18 +1166,24 @@ function SearchResults({
 }) {
   const matches = useMemo(() => {
     const q = query.toLowerCase();
-    return people.filter(
-      (p) =>
+    const result: Person[] = [];
+    for (const p of people) {
+      if (
         p.nom.toLowerCase().includes(q) ||
         p.grade.toLowerCase().includes(q) ||
         p.ppr.toLowerCase().includes(q) ||
-        p.cin.toLowerCase().includes(q),
-    );
+        p.cin.toLowerCase().includes(q)
+      ) {
+        result.push(p);
+        if (result.length >= SEARCH_RESULT_LIMIT) break;
+      }
+    }
+    return result;
   }, [people, query]);
   return (
     <div className="space-y-3">
       <div className="text-xs text-muted-foreground px-1">
-        {matches.length} résultat(s) pour « {query} »
+        {matches.length === SEARCH_RESULT_LIMIT ? `Les ${SEARCH_RESULT_LIMIT} premiers résultats` : `${matches.length} résultat(s)`} pour « {query} »
       </div>
       <TeamList
         people={matches}
