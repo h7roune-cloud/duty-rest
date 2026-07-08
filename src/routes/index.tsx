@@ -74,6 +74,7 @@ interface Person {
 
 const STORAGE_KEY = "conges-personnel-v1";
 const SEARCH_RESULT_LIMIT = 60;
+const LIST_RENDER_LIMIT = 40;
 
 function loadPeople(): Person[] {
   if (typeof window === "undefined") return [];
@@ -329,7 +330,7 @@ function Index() {
         if (d >= 0 && d <= 3) items.push({ person: p, absence: a, days: d, reprise: rep });
       }
     }
-    return items.sort((a, b) => a.days - b.days);
+    return items.sort((a, b) => a.days - b.days).slice(0, 30);
   }, [people]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -873,6 +874,12 @@ function TeamList({
   onOpenHistory: (p: Person) => void;
   repriseTodayIds: Set<string>;
 }) {
+  const [visibleCount, setVisibleCount] = useState(LIST_RENDER_LIMIT);
+
+  useEffect(() => {
+    setVisibleCount(LIST_RENDER_LIMIT);
+  }, [people]);
+
   if (people.length === 0) {
     return (
       <div className="rounded-2xl border-2 border-dashed border-border p-10 text-center bg-card">
@@ -887,9 +894,12 @@ function TeamList({
     );
   }
   const today = new Date().toISOString().slice(0, 10);
+  const visiblePeople = people.slice(0, visibleCount);
+  const hiddenCount = Math.max(0, people.length - visiblePeople.length);
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {people.map((p) => {
+    <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {visiblePeople.map((p) => {
         const active = p.absences.find(
           (a) => a.dateDebut <= today && a.dateFin >= today,
         );
@@ -1010,6 +1020,17 @@ function TeamList({
           </div>
         );
       })}
+      </div>
+      {hiddenCount > 0 && (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full rounded-xl"
+          onClick={() => setVisibleCount((count) => count + LIST_RENDER_LIMIT)}
+        >
+          Afficher plus ({hiddenCount})
+        </Button>
+      )}
     </div>
   );
 }
