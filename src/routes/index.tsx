@@ -614,24 +614,7 @@ function Index() {
 
       <main className="mx-auto max-w-6xl px-3 sm:px-4 -mt-4 space-y-4">
         {/* Search bar */}
-        <div className="relative rounded-2xl bg-card shadow-sm border">
-          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher un nom, grade, PPR ou CIN…"
-            className="pl-10 pr-10 h-12 rounded-2xl border-0 shadow-none focus-visible:ring-0 bg-transparent"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-muted text-muted-foreground"
-              aria-label="Effacer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+        <SearchBox value={search} onChange={setSearch} />
 
         {normalizedSearch ? (
           <SearchResults
@@ -766,6 +749,44 @@ function StatCard({
         <span className="truncate">{label}</span>
       </div>
       <div className="text-2xl font-bold mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+function SearchBox({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [localValue, setLocalValue] = useState(value);
+
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => onChange(localValue), 120);
+    return () => window.clearTimeout(id);
+  }, [localValue, onChange]);
+
+  return (
+    <div className="relative rounded-2xl bg-card shadow-sm border">
+      <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+      <Input
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        placeholder="Rechercher un nom, grade, PPR ou CIN…"
+        className="pl-10 pr-10 h-12 rounded-2xl border-0 shadow-none focus-visible:ring-0 bg-transparent"
+      />
+      {localValue && (
+        <button
+          type="button"
+          onClick={() => {
+            setLocalValue("");
+            onChange("");
+          }}
+          className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-muted text-muted-foreground"
+          aria-label="Effacer"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
     </div>
   );
 }
