@@ -513,7 +513,7 @@ function Index() {
         <div className="relative mx-auto max-w-6xl px-4 pt-6 pb-8">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="shrink-0 w-11 h-11 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
+              <div className="shrink-0 w-11 h-11 rounded-2xl bg-white/20  flex items-center justify-center">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div className="min-w-0">
@@ -531,7 +531,7 @@ function Index() {
                 size="icon"
                 onClick={() => setAboutOpen(true)}
                 aria-label="À propos"
-                className="shrink-0 rounded-full w-10 h-10 bg-white/15 backdrop-blur border-white/30 text-white hover:bg-white/25 hover:text-white"
+                className="shrink-0 rounded-full w-10 h-10 bg-white/15  border-white/30 text-white hover:bg-white/25 hover:text-white"
               >
                 <Info className="w-4 h-4" />
               </Button>
@@ -570,7 +570,7 @@ function Index() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full bg-white/10 text-white border-white/30 hover:bg-white/20 hover:text-white backdrop-blur font-semibold"
+                  className="w-full bg-white/10 text-white border-white/30 hover:bg-white/20 hover:text-white  font-semibold"
                 >
                   <Download className="w-4 h-4" /> Données
                 </Button>
@@ -728,7 +728,7 @@ function StatCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl bg-white/15 backdrop-blur border border-white/20 px-3 py-2.5">
+    <div className="rounded-2xl bg-white/15  border border-white/20 px-3 py-2.5">
       <div className="flex items-center gap-1.5 text-white/80 text-[11px] font-medium">
         {icon}
         <span className="truncate">{label}</span>
@@ -750,7 +750,7 @@ function NotificationsPopover({
         <Button
           variant="outline"
           size="icon"
-          className="relative shrink-0 rounded-full w-10 h-10 bg-white/15 backdrop-blur border-white/30 text-white hover:bg-white/25 hover:text-white"
+          className="relative shrink-0 rounded-full w-10 h-10 bg-white/15  border-white/30 text-white hover:bg-white/25 hover:text-white"
         >
           <Bell className="w-4 h-4" />
           {expiring.length > 0 && (
