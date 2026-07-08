@@ -509,10 +509,7 @@ function Index() {
         className="relative overflow-hidden text-primary-foreground"
         style={{ background: "var(--gradient-primary)" }}
       >
-        <div className="absolute inset-0 opacity-20 pointer-events-none">
-          <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/30 blur-3xl" />
-          <div className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full bg-white/20 blur-3xl" />
-        </div>
+        {/* Decorative blur circles removed for Android WebView performance */}
         <div className="relative mx-auto max-w-6xl px-4 pt-6 pb-8">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="flex min-w-0 items-center gap-3">
