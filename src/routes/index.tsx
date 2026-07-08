@@ -882,7 +882,7 @@ function TeamList({
         return (
           <div
             key={p.id}
-            className={`group rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all overflow-hidden ${
+            className={`group rounded-2xl bg-card border shadow-sm overflow-hidden ${
               repriseToday ? "border-destructive ring-2 ring-destructive/40" : ""
             }`}
           >
@@ -891,15 +891,13 @@ function TeamList({
               className="w-full text-left p-4 flex items-center gap-3 hover:bg-muted/40 transition-colors"
             >
               <div
-                className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow ${
-                  repriseToday ? "pulse-ring" : ""
-                }`}
+                className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow"
                 style={{ background: "var(--gradient-primary)" }}
               >
                 {initials(p.nom) || "?"}
               </div>
               <div className="min-w-0 flex-1">
-                <div className={`font-semibold truncate ${repriseToday ? "blink-red" : ""}`}>
+                <div className={`font-semibold truncate ${repriseToday ? "text-destructive font-bold" : ""}`}>
                   {p.nom}
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
