@@ -1,4 +1,3 @@
-import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import {
   RouterProvider,
@@ -27,8 +26,7 @@ declare module "@tanstack/react-router" {
 }
 
 const rootEl = document.getElementById("root")!;
-createRoot(rootEl).render(
-  <StrictMode>
-    <RouterProvider router={router} />
-  </StrictMode>,
-);
+// StrictMode disabled in the Capacitor build: double-invoking effects makes
+// input handlers feel laggy inside the Android WebView.
+createRoot(rootEl).render(<RouterProvider router={router} />);
+
