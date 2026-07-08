@@ -1,6 +1,5 @@
 @import "tailwindcss" source(none);
 @source "../src";
-@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -153,29 +152,13 @@
   }
 }
 
-@keyframes blink-red {
-  0%, 100% {
-    color: oklch(0.62 0.22 25);
-    text-shadow: 0 0 0 rgba(220, 38, 38, 0);
+@media (pointer: coarse) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
   }
-  50% {
-    color: oklch(0.55 0.25 25);
-    text-shadow: 0 0 12px rgba(220, 38, 38, 0.7);
-  }
-}
-
-.blink-red {
-  animation: blink-red 1s ease-in-out infinite;
-  font-weight: 700;
-}
-
-@keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); }
-  70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-}
-
-.pulse-ring {
-  animation: pulse-ring 1.5s ease-out infinite;
 }
 

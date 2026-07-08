@@ -1,24 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
@@ -40,14 +24,6 @@ import {
   Save,
   Upload,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 
 
@@ -97,6 +73,8 @@ interface Person {
 }
 
 const STORAGE_KEY = "conges-personnel-v1";
+const SEARCH_RESULT_LIMIT = 60;
+const LIST_RENDER_LIMIT = 40;
 
 function loadPeople(): Person[] {
   if (typeof window === "undefined") return [];
@@ -142,6 +120,10 @@ function initials(name: string) {
     .slice(0, 2)
     .map((s) => s[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+function makeId() {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function csvEscape(v: string) {
@@ -324,7 +306,10 @@ function Index() {
   const [absencePerson, setAbsencePerson] = useState<Person | null>(null);
   const [historyPerson, setHistoryPerson] = useState<Person | null>(null);
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
+  const normalizedSearch = deferredSearch.trim();
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [dataMenuOpen, setDataMenuOpen] = useState(false);
 
   useEffect(() => {
     setPeople(loadPeople());
@@ -345,7 +330,7 @@ function Index() {
         if (d >= 0 && d <= 3) items.push({ person: p, absence: a, days: d, reprise: rep });
       }
     }
-    return items.sort((a, b) => a.days - b.days);
+    return items.sort((a, b) => a.days - b.days).slice(0, 30);
   }, [people]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -370,25 +355,32 @@ function Index() {
     [people, todayStr],
   );
 
+  const teamCounts = useMemo(() => {
+    const counts = Object.fromEntries(TEAMS.map((t) => [t, 0])) as Record<Team, number>;
+    for (const p of people) counts[p.team] += 1;
+    return counts;
+  }, [people]);
+
+  const activeTeamPeople = useMemo(
+    () => people.filter((p) => p.team === activeTeam),
+    [people, activeTeam],
+  );
+
   useEffect(() => {
     if (!loaded) return;
-    for (const e of expiring) {
-      const key = `notified-reprise-${e.absence.id}-${e.days}`;
-      if (!sessionStorage.getItem(key)) {
-        toast.warning(`Reprise de service : ${e.person.nom}`, {
-          description: `${e.absence.motif} · reprise ${
-            e.days === 0 ? "aujourd'hui" : `dans ${e.days} jour(s)`
-          } (${fmt(e.reprise)})`,
-          duration: e.days === 0 ? 10000 : 5000,
-        });
-        sessionStorage.setItem(key, "1");
-      }
-    }
-  }, [expiring, loaded]);
+    if (expiring.length === 0) return;
+    const key = `notified-reprise-summary-${todayStr}`;
+    if (sessionStorage.getItem(key)) return;
+    toast.warning("Reprises de service proches", {
+      description: `${expiring.length} notification(s) à consulter avec l’icône cloche`,
+      duration: 4000,
+    });
+    sessionStorage.setItem(key, "1");
+  }, [expiring, loaded, todayStr]);
 
 
   const addPerson = (p: Omit<Person, "id" | "absences">) => {
-    setPeople((prev) => [...prev, { ...p, id: crypto.randomUUID(), absences: [] }]);
+    setPeople((prev) => [...prev, { ...p, id: makeId(), absences: [] }]);
     toast.success("Personnel ajouté");
   };
   const deletePerson = (id: string) => {
@@ -399,7 +391,7 @@ function Index() {
     setPeople((prev) =>
       prev.map((p) =>
         p.id === personId
-          ? { ...p, absences: [...p.absences, { ...a, id: crypto.randomUUID() }] }
+          ? { ...p, absences: [...p.absences, { ...a, id: makeId() }] }
           : p,
       ),
     );
@@ -478,10 +470,10 @@ function Index() {
         .filter((p) => p && typeof p.nom === "string" && Array.isArray(p.absences))
         .map((p) => ({
           ...p,
-          id: p.id ?? crypto.randomUUID(),
+          id: p.id ?? makeId(),
           absences: p.absences.map((a) => ({
             ...a,
-            id: a.id ?? crypto.randomUUID(),
+            id: a.id ?? makeId(),
           })),
         }));
       const ok = window.confirm(
@@ -548,66 +540,63 @@ function Index() {
 
           {/* Actions */}
           <div className="mt-4 grid grid-cols-2 gap-2">
-            <Dialog open={addPersonOpen} onOpenChange={setAddPersonOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  size="lg"
-                  className="w-full bg-white text-primary hover:bg-white/90 shadow-lg font-semibold"
-                >
-                  <UserPlus className="w-4 h-4" /> Ajouter
-                </Button>
-              </DialogTrigger>
-              <AddPersonDialog
-                defaultTeam={activeTeam}
-                onSubmit={(p) => {
-                  addPerson(p);
-                  setAddPersonOpen(false);
-                }}
-              />
-            </Dialog>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full bg-white/10 text-white border-white/30 hover:bg-white/20 hover:text-white  font-semibold"
-                >
-                  <Download className="w-4 h-4" /> Données
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel>Exporter</DropdownMenuLabel>
-                <DropdownMenuItem onClick={handleExport}>
-                  <FileSpreadsheet className="w-4 h-4" />
-                  <div className="flex flex-col">
+            <Button
+              size="lg"
+              onClick={() => setAddPersonOpen(true)}
+              className="w-full bg-white text-primary hover:bg-white/90 shadow-lg font-semibold"
+            >
+              <UserPlus className="w-4 h-4" /> Ajouter
+            </Button>
+            <div className="relative">
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => setDataMenuOpen((v) => !v)}
+                className="w-full bg-white/10 text-white border-white/30 hover:bg-white/20 hover:text-white font-semibold"
+              >
+                <Download className="w-4 h-4" /> Données
+              </Button>
+              {dataMenuOpen && (
+                <div className="absolute right-0 top-full z-40 mt-2 w-64 rounded-xl border bg-popover p-2 text-popover-foreground shadow-lg">
+                  <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">Exporter</div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDataMenuOpen(false);
+                      void handleExport();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-accent"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
                     <span>Fichier Excel</span>
-                    <span className="text-xs text-muted-foreground">
-                      Rapport imprimable (.xlsx)
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleBackup}>
-                  <Save className="w-4 h-4" />
-                  <div className="flex flex-col">
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDataMenuOpen(false);
+                      handleBackup();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-accent"
+                  >
+                    <Save className="w-4 h-4" />
                     <span>Sauvegarde complète</span>
-                    <span className="text-xs text-muted-foreground">
-                      Fichier .json pour restauration
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel>Importer</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                  <Upload className="w-4 h-4" />
-                  <div className="flex flex-col">
+                  </button>
+                  <div className="my-1 h-px bg-border" />
+                  <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">Importer</div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDataMenuOpen(false);
+                      fileInputRef.current?.click();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-accent"
+                  >
+                    <Upload className="w-4 h-4" />
                     <span>Restaurer une sauvegarde</span>
-                    <span className="text-xs text-muted-foreground">
-                      Depuis un fichier .json
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  </button>
+                </div>
+              )}
+            </div>
             <input
               ref={fileInputRef}
               type="file"
@@ -626,29 +615,12 @@ function Index() {
 
       <main className="mx-auto max-w-6xl px-3 sm:px-4 -mt-4 space-y-4">
         {/* Search bar */}
-        <div className="relative rounded-2xl bg-card shadow-sm border">
-          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher un nom, grade, PPR ou CIN…"
-            className="pl-10 pr-10 h-12 rounded-2xl border-0 shadow-none focus-visible:ring-0 bg-transparent"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-muted text-muted-foreground"
-              aria-label="Effacer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+        <SearchBox value={search} onChange={setSearch} />
 
-        {search.trim() ? (
+        {normalizedSearch ? (
           <SearchResults
             people={people}
-            query={search.trim()}
+            query={normalizedSearch}
             onDelete={deletePerson}
             onOpenAbsence={setAbsencePerson}
             onDeleteAbsence={deleteAbsence}
@@ -656,41 +628,51 @@ function Index() {
             repriseTodayIds={repriseTodayIds}
           />
         ) : (
-          <Tabs value={activeTeam} onValueChange={(v) => setActiveTeam(v as Team)}>
+          <div className="space-y-4">
             <div className="rounded-2xl bg-card shadow-sm border p-1.5 overflow-x-auto">
-              <TabsList className="bg-transparent h-auto gap-1 w-full grid grid-cols-4 min-w-[380px]">
+              <div className="grid min-w-[380px] grid-cols-4 gap-1" role="tablist" aria-label="Équipes">
                 {TEAMS.map((t) => {
-                  const count = people.filter((p) => p.team === t).length;
+                  const active = activeTeam === t;
                   return (
-                    <TabsTrigger
+                    <button
                       key={t}
-                      value={t}
-                      className="flex-col gap-0.5 py-2 px-1 rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow"
+                      type="button"
+                      onClick={() => setActiveTeam(t)}
+                      className={`rounded-xl px-1 py-2 text-center ${
+                        active ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:bg-muted"
+                      }`}
+                      role="tab"
+                      aria-selected={active}
                     >
-                      <span className="text-[11px] font-semibold">{TEAM_SHORT[t]}</span>
-                      <span className="text-[10px] opacity-70">{count} pers.</span>
-                    </TabsTrigger>
+                      <span className="block text-[11px] font-semibold">{TEAM_SHORT[t]}</span>
+                      <span className="block text-[10px] opacity-70">{teamCounts[t]} pers.</span>
+                    </button>
                   );
                 })}
-              </TabsList>
+              </div>
             </div>
 
-            {TEAMS.map((t) => (
-              <TabsContent key={t} value={t} className="mt-4">
-                <TeamList
-                  people={people.filter((p) => p.team === t)}
-                  onDelete={deletePerson}
-                  onOpenAbsence={setAbsencePerson}
-                  onDeleteAbsence={deleteAbsence}
-                  onOpenHistory={setHistoryPerson}
-                  repriseTodayIds={repriseTodayIds}
-                />
-              </TabsContent>
-            ))}
-
-          </Tabs>
+            <TeamList
+              people={activeTeamPeople}
+              onDelete={deletePerson}
+              onOpenAbsence={setAbsencePerson}
+              onDeleteAbsence={deleteAbsence}
+              onOpenHistory={setHistoryPerson}
+              repriseTodayIds={repriseTodayIds}
+            />
+          </div>
         )}
       </main>
+
+      <SimpleModal open={addPersonOpen} onOpenChange={setAddPersonOpen} className="max-w-md">
+        <AddPersonDialog
+          defaultTeam={activeTeam}
+          onSubmit={(p) => {
+            addPerson(p);
+            setAddPersonOpen(false);
+          }}
+        />
+      </SimpleModal>
 
       <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
 
@@ -699,11 +681,7 @@ function Index() {
         onOpenChange={(v) => !v && setHistoryPerson(null)}
       />
 
-
-      <Dialog
-        open={!!absencePerson}
-        onOpenChange={(v) => !v && setAbsencePerson(null)}
-      >
+      <SimpleModal open={!!absencePerson} onOpenChange={(v) => !v && setAbsencePerson(null)} className="max-w-md">
         {absencePerson && (
           <AddAbsenceDialog
             person={absencePerson}
@@ -713,7 +691,45 @@ function Index() {
             }}
           />
         )}
-      </Dialog>
+      </SimpleModal>
+    </div>
+  );
+}
+
+function SimpleModal({
+  open,
+  onOpenChange,
+  children,
+  className = "",
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-3 py-4"
+      role="presentation"
+      onMouseDown={() => onOpenChange(false)}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        className={`relative max-h-[90vh] w-full overflow-auto rounded-2xl border bg-background p-5 shadow-lg ${className}`}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {children}
+        <button
+          type="button"
+          onClick={() => onOpenChange(false)}
+          className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="Fermer"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -725,7 +741,7 @@ function StatCard({
 }: {
   label: string;
   value: number;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }) {
   return (
     <div className="rounded-2xl bg-white/15  border border-white/20 px-3 py-2.5">
@@ -738,6 +754,44 @@ function StatCard({
   );
 }
 
+function SearchBox({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [localValue, setLocalValue] = useState(value);
+
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => onChange(localValue), 120);
+    return () => window.clearTimeout(id);
+  }, [localValue, onChange]);
+
+  return (
+    <div className="relative rounded-2xl bg-card shadow-sm border">
+      <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+      <Input
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        placeholder="Rechercher un nom, grade, PPR ou CIN…"
+        className="pl-10 pr-10 h-12 rounded-2xl border-0 shadow-none focus-visible:ring-0 bg-transparent"
+      />
+      {localValue && (
+        <button
+          type="button"
+          onClick={() => {
+            setLocalValue("");
+            onChange("");
+          }}
+          className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-muted text-muted-foreground"
+          aria-label="Effacer"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 function NotificationsPopover({
   expiring,
 }: {
@@ -745,25 +799,22 @@ function NotificationsPopover({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon"
-          className="relative shrink-0 rounded-full w-10 h-10 bg-white/15  border-white/30 text-white hover:bg-white/25 hover:text-white"
-        >
-          <Bell className="w-4 h-4" />
-          {expiring.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-white">
-              {expiring.length}
-            </span>
-          )}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-sm rounded-2xl">
-        <DialogHeader>
-          <DialogTitle>Expirations proches</DialogTitle>
-        </DialogHeader>
+    <>
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => setOpen(true)}
+        className="relative shrink-0 rounded-full w-10 h-10 bg-white/15  border-white/30 text-white hover:bg-white/25 hover:text-white"
+      >
+        <Bell className="w-4 h-4" />
+        {expiring.length > 0 && (
+          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-white">
+            {expiring.length}
+          </span>
+        )}
+      </Button>
+      <SimpleModal open={open} onOpenChange={setOpen} className="max-w-sm">
+        <h2 className="pr-8 text-lg font-semibold">Expirations proches</h2>
         {expiring.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
             Aucune expiration dans les 3 prochains jours.
@@ -792,8 +843,8 @@ function NotificationsPopover({
             ))}
           </ul>
         )}
-      </DialogContent>
-    </Dialog>
+      </SimpleModal>
+    </>
   );
 }
 
@@ -823,6 +874,12 @@ function TeamList({
   onOpenHistory: (p: Person) => void;
   repriseTodayIds: Set<string>;
 }) {
+  const [visibleCount, setVisibleCount] = useState(LIST_RENDER_LIMIT);
+
+  useEffect(() => {
+    setVisibleCount(LIST_RENDER_LIMIT);
+  }, [people]);
+
   if (people.length === 0) {
     return (
       <div className="rounded-2xl border-2 border-dashed border-border p-10 text-center bg-card">
@@ -837,17 +894,23 @@ function TeamList({
     );
   }
   const today = new Date().toISOString().slice(0, 10);
+  const visiblePeople = people.slice(0, visibleCount);
+  const hiddenCount = Math.max(0, people.length - visiblePeople.length);
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {people.map((p) => {
+    <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {visiblePeople.map((p) => {
         const active = p.absences.find(
           (a) => a.dateDebut <= today && a.dateFin >= today,
         );
         const repriseToday = repriseTodayIds.has(p.id);
+        const recentAbsences = [...p.absences]
+          .sort((a, b) => b.dateDebut.localeCompare(a.dateDebut))
+          .slice(0, 3);
         return (
           <div
             key={p.id}
-            className={`group rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all overflow-hidden ${
+            className={`group rounded-2xl bg-card border shadow-sm overflow-hidden ${
               repriseToday ? "border-destructive ring-2 ring-destructive/40" : ""
             }`}
           >
@@ -856,15 +919,13 @@ function TeamList({
               className="w-full text-left p-4 flex items-center gap-3 hover:bg-muted/40 transition-colors"
             >
               <div
-                className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow ${
-                  repriseToday ? "pulse-ring" : ""
-                }`}
+                className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow"
                 style={{ background: "var(--gradient-primary)" }}
               >
                 {initials(p.nom) || "?"}
               </div>
               <div className="min-w-0 flex-1">
-                <div className={`font-semibold truncate ${repriseToday ? "blink-red" : ""}`}>
+                <div className={`font-semibold truncate ${repriseToday ? "text-destructive font-bold" : ""}`}>
                   {p.nom}
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
@@ -905,10 +966,8 @@ function TeamList({
                   </span>
                   <ChevronRight className="w-3.5 h-3.5 text-primary" />
                 </button>
-                <ul className="space-y-1.5 max-h-40 overflow-auto">
-                  {[...p.absences]
-                    .sort((a, b) => b.dateDebut.localeCompare(a.dateDebut))
-                    .map((a) => (
+                <ul className="space-y-1.5">
+                  {recentAbsences.map((a) => (
                       <li
                         key={a.id}
                         className="text-xs flex items-start justify-between gap-2 rounded-lg px-2 py-1.5 bg-muted/50"
@@ -961,6 +1020,17 @@ function TeamList({
           </div>
         );
       })}
+      </div>
+      {hiddenCount > 0 && (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full rounded-xl"
+          onClick={() => setVisibleCount((count) => count + LIST_RENDER_LIMIT)}
+        >
+          Afficher plus ({hiddenCount})
+        </Button>
+      )}
     </div>
   );
 }
@@ -979,10 +1049,8 @@ function AddPersonDialog({
   const [team, setTeam] = useState<Team>(defaultTeam);
 
   return (
-    <DialogContent className="max-w-md rounded-2xl">
-      <DialogHeader>
-        <DialogTitle>Ajouter un personnel</DialogTitle>
-      </DialogHeader>
+    <>
+      <h2 className="pr-8 text-lg font-semibold">Ajouter un personnel</h2>
       <div className="space-y-3">
         <div>
           <Label>Nom complet</Label>
@@ -1004,15 +1072,16 @@ function AddPersonDialog({
         </div>
         <div>
           <Label>Équipe / Service</Label>
-          <Select value={team} onValueChange={(v) => setTeam(v as Team)}>
-            <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {TEAMS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <select
+            value={team}
+            onChange={(e) => setTeam(e.target.value as Team)}
+            className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
+          >
+            {TEAMS.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
         </div>
       </div>
-      <DialogFooter>
+      <div className="mt-4">
         <Button
           className="w-full rounded-xl"
           size="lg"
@@ -1023,8 +1092,8 @@ function AddPersonDialog({
         >
           Enregistrer
         </Button>
-      </DialogFooter>
-    </DialogContent>
+      </div>
+    </>
   );
 }
 
@@ -1051,20 +1120,21 @@ function AddAbsenceDialog({
   };
 
   return (
-    <DialogContent className="max-w-md rounded-2xl">
-      <DialogHeader>
-        <DialogTitle>Nouvelle absence</DialogTitle>
+    <>
+      <div className="pr-8">
+        <h2 className="text-lg font-semibold">Nouvelle absence</h2>
         <p className="text-sm text-muted-foreground">{person.nom} · {person.team}</p>
-      </DialogHeader>
+      </div>
       <div className="space-y-3">
         <div>
           <Label>Motif</Label>
-          <Select value={motif} onValueChange={(v) => setMotif(v as Motif)}>
-            <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {MOTIFS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <select
+            value={motif}
+            onChange={(e) => setMotif(e.target.value as Motif)}
+            className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
+          >
+            {MOTIFS.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -1093,7 +1163,7 @@ function AddAbsenceDialog({
           <Input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} className="rounded-xl" />
         </div>
       </div>
-      <DialogFooter>
+      <div className="mt-4">
         <Button
           size="lg"
           className="w-full rounded-xl"
@@ -1112,8 +1182,8 @@ function AddAbsenceDialog({
         >
           Enregistrer
         </Button>
-      </DialogFooter>
-    </DialogContent>
+      </div>
+    </>
   );
 }
 
@@ -1136,18 +1206,26 @@ function SearchResults({
   onOpenHistory: (p: Person) => void;
   repriseTodayIds: Set<string>;
 }) {
-  const q = query.toLowerCase();
-  const matches = people.filter(
-    (p) =>
-      p.nom.toLowerCase().includes(q) ||
-      p.grade.toLowerCase().includes(q) ||
-      p.ppr.toLowerCase().includes(q) ||
-      p.cin.toLowerCase().includes(q),
-  );
+  const matches = useMemo(() => {
+    const q = query.toLowerCase();
+    const result: Person[] = [];
+    for (const p of people) {
+      if (
+        p.nom.toLowerCase().includes(q) ||
+        p.grade.toLowerCase().includes(q) ||
+        p.ppr.toLowerCase().includes(q) ||
+        p.cin.toLowerCase().includes(q)
+      ) {
+        result.push(p);
+        if (result.length >= SEARCH_RESULT_LIMIT) break;
+      }
+    }
+    return result;
+  }, [people, query]);
   return (
     <div className="space-y-3">
       <div className="text-xs text-muted-foreground px-1">
-        {matches.length} résultat(s) pour « {query} »
+        {matches.length === SEARCH_RESULT_LIMIT ? `Les ${SEARCH_RESULT_LIMIT} premiers résultats` : `${matches.length} résultat(s)`} pour « {query} »
       </div>
       <TeamList
         people={matches}
@@ -1201,19 +1279,18 @@ function HistoryDialog({
   const totalDays = Array.from(totals.values()).reduce((s, n) => s + n, 0);
 
   return (
-    <Dialog open={!!person} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-2xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <SimpleModal open={!!person} onOpenChange={onOpenChange} className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+        <div className="pr-8">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
             <CalendarIcon className="w-5 h-5 text-primary" />
             Historique {year}
-          </DialogTitle>
+          </h2>
           {person && (
             <p className="text-sm text-muted-foreground">
               {person.nom} · {person.grade || "—"} · {person.team}
             </p>
           )}
-        </DialogHeader>
+        </div>
 
         <div className="overflow-auto space-y-4 pr-1">
           {/* Totals per motif */}
@@ -1291,8 +1368,7 @@ function HistoryDialog({
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+    </SimpleModal>
   );
 }
 
@@ -1305,13 +1381,12 @@ function AboutDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <SimpleModal open={open} onOpenChange={onOpenChange} className="max-w-md">
+        <div className="pr-8">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
             <Sparkles className="w-5 h-5 text-primary" /> À propos
-          </DialogTitle>
-        </DialogHeader>
+          </h2>
+        </div>
         <div className="space-y-4 text-sm">
           <p className="text-muted-foreground leading-relaxed">
             Application de gestion des congés administratifs, congés maladie,
@@ -1336,7 +1411,6 @@ function AboutDialog({
             Données stockées localement sur votre appareil.
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+    </SimpleModal>
   );
 }
