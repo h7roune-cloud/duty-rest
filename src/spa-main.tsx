@@ -1,32 +1,24 @@
 import { createRoot } from "react-dom/client";
-import {
-  RouterProvider,
-  createRouter,
-  createHashHistory,
-} from "@tanstack/react-router";
 import { QueryClient } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 
-import { routeTree } from "./routeTree.gen";
+import { Index } from "./routes/index";
 import "./styles.css";
 
 const queryClient = new QueryClient();
 
-const router = createRouter({
-  routeTree,
-  history: createHashHistory(),
-  context: { queryClient },
-  defaultPreloadStaleTime: 0,
-  scrollRestoration: true,
-});
+const rootEl = document.getElementById("root");
 
-declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
+if (!rootEl) {
+  throw new Error("Élément racine introuvable");
 }
 
-const rootEl = document.getElementById("root")!;
-// StrictMode disabled in the Capacitor build: double-invoking effects makes
-// input handlers feel laggy inside the Android WebView.
-createRoot(rootEl).render(<RouterProvider router={router} />);
+// The Android build mounts the application directly. It deliberately avoids
+// the SSR shell and router lifecycle, which are unnecessary in an offline APK
+// and can block touch events in older Android WebViews.
+createRoot(rootEl).render(
+  <QueryClientProvider client={queryClient}>
+    <Index />
+  </QueryClientProvider>,
+);
 
