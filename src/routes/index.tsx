@@ -16,6 +16,7 @@ import {
   UserPlus,
   Sparkles,
   ChevronRight,
+  ChevronLeft,
   Search,
   Info,
   Mail,
@@ -23,6 +24,8 @@ import {
   FileSpreadsheet,
   Save,
   Upload,
+  CalendarDays,
+  List,
 } from "lucide-react";
 
 
@@ -309,6 +312,8 @@ export function Index() {
   const normalizedSearch = search.trim();
   const [aboutOpen, setAboutOpen] = useState(false);
   const [dataMenuOpen, setDataMenuOpen] = useState(false);
+  const [view, setView] = useState<"liste" | "calendrier">("liste");
+
 
   useEffect(() => {
     setPeople(loadPeople());
