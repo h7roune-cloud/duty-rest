@@ -16,6 +16,7 @@ import {
   UserPlus,
   Sparkles,
   ChevronRight,
+  ChevronLeft,
   Search,
   Info,
   Mail,
@@ -23,6 +24,8 @@ import {
   FileSpreadsheet,
   Save,
   Upload,
+  CalendarDays,
+  List,
 } from "lucide-react";
 
 
