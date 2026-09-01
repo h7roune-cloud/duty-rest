@@ -312,6 +312,8 @@ export function Index() {
   const normalizedSearch = search.trim();
   const [aboutOpen, setAboutOpen] = useState(false);
   const [dataMenuOpen, setDataMenuOpen] = useState(false);
+  const [view, setView] = useState<"liste" | "calendrier">("liste");
+
 
   useEffect(() => {
     setPeople(loadPeople());
