@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -298,7 +298,7 @@ async function exportExcel(people: Person[]) {
   URL.revokeObjectURL(url);
 }
 
-function Index() {
+export function Index() {
   const [people, setPeople] = useState<Person[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [activeTeam, setActiveTeam] = useState<Team>("Equipe A");
@@ -306,8 +306,7 @@ function Index() {
   const [absencePerson, setAbsencePerson] = useState<Person | null>(null);
   const [historyPerson, setHistoryPerson] = useState<Person | null>(null);
   const [search, setSearch] = useState("");
-  const deferredSearch = useDeferredValue(search);
-  const normalizedSearch = deferredSearch.trim();
+  const normalizedSearch = search.trim();
   const [aboutOpen, setAboutOpen] = useState(false);
   const [dataMenuOpen, setDataMenuOpen] = useState(false);
 
@@ -755,33 +754,22 @@ function StatCard({
 }
 
 function SearchBox({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const [localValue, setLocalValue] = useState(value);
-
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
-
-  useEffect(() => {
-    const id = window.setTimeout(() => onChange(localValue), 120);
-    return () => window.clearTimeout(id);
-  }, [localValue, onChange]);
-
   return (
     <div className="relative rounded-2xl bg-card shadow-sm border">
       <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
       <Input
-        value={localValue}
-        onChange={(e) => setLocalValue(e.target.value)}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         placeholder="Rechercher un nom, grade, PPR ou CIN…"
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
         className="pl-10 pr-10 h-12 rounded-2xl border-0 shadow-none focus-visible:ring-0 bg-transparent"
       />
-      {localValue && (
+      {value && (
         <button
           type="button"
-          onClick={() => {
-            setLocalValue("");
-            onChange("");
-          }}
+          onClick={() => onChange("")}
           className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-muted text-muted-foreground"
           aria-label="Effacer"
         >
