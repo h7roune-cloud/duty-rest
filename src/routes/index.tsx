@@ -633,37 +633,64 @@ export function Index() {
           />
         ) : (
           <div className="space-y-4">
-            <div className="rounded-2xl bg-card shadow-sm border p-1.5 overflow-x-auto">
-              <div className="grid min-w-[380px] grid-cols-4 gap-1" role="tablist" aria-label="Équipes">
-                {TEAMS.map((t) => {
-                  const active = activeTeam === t;
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setActiveTeam(t)}
-                      className={`rounded-xl px-1 py-2 text-center ${
-                        active ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:bg-muted"
-                      }`}
-                      role="tab"
-                      aria-selected={active}
-                    >
-                      <span className="block text-[11px] font-semibold">{TEAM_SHORT[t]}</span>
-                      <span className="block text-[10px] opacity-70">{teamCounts[t]} pers.</span>
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="grid grid-cols-2 gap-1 rounded-2xl bg-card shadow-sm border p-1.5">
+              <button
+                type="button"
+                onClick={() => setView("liste")}
+                className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[12px] font-semibold ${
+                  view === "liste" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                <List className="w-4 h-4" /> Liste
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("calendrier")}
+                className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[12px] font-semibold ${
+                  view === "calendrier" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                <CalendarDays className="w-4 h-4" /> Calendrier
+              </button>
             </div>
 
-            <TeamList
-              people={activeTeamPeople}
-              onDelete={deletePerson}
-              onOpenAbsence={setAbsencePerson}
-              onDeleteAbsence={deleteAbsence}
-              onOpenHistory={setHistoryPerson}
-              repriseTodayIds={repriseTodayIds}
-            />
+            {view === "calendrier" ? (
+              <MonthCalendar people={people} />
+            ) : (
+              <>
+                <div className="rounded-2xl bg-card shadow-sm border p-1.5 overflow-x-auto">
+                  <div className="grid min-w-[380px] grid-cols-4 gap-1" role="tablist" aria-label="Équipes">
+                    {TEAMS.map((t) => {
+                      const active = activeTeam === t;
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setActiveTeam(t)}
+                          className={`rounded-xl px-1 py-2 text-center ${
+                            active ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:bg-muted"
+                          }`}
+                          role="tab"
+                          aria-selected={active}
+                        >
+                          <span className="block text-[11px] font-semibold">{TEAM_SHORT[t]}</span>
+                          <span className="block text-[10px] opacity-70">{teamCounts[t]} pers.</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <TeamList
+                  people={activeTeamPeople}
+                  onDelete={deletePerson}
+                  onOpenAbsence={setAbsencePerson}
+                  onDeleteAbsence={deleteAbsence}
+                  onOpenHistory={setHistoryPerson}
+                  repriseTodayIds={repriseTodayIds}
+                />
+              </>
+            )}
           </div>
         )}
       </main>
@@ -1405,5 +1432,187 @@ function AboutDialog({
           </div>
         </div>
     </SimpleModal>
+  );
+}
+
+const MOTIF_DOT: Record<Motif, string> = {
+  "Congé administratif": "bg-blue-500",
+  "Congé maladie": "bg-red-500",
+  "Congé de naissance": "bg-pink-500",
+  Permission: "bg-amber-500",
+  Récupération: "bg-emerald-500",
+  Mission: "bg-indigo-500",
+  Formation: "bg-purple-500",
+  Autre: "bg-slate-500",
+};
+
+const MONTH_NAMES = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+];
+const WEEK_DAYS = ["L", "M", "M", "J", "V", "S", "D"];
+
+function isoOf(y: number, m: number, d: number) {
+  return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+type DayEntry = { person: Person; absence: Absence };
+
+function MonthCalendar({ people }: { people: Person[] }) {
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth());
+  const [selected, setSelected] = useState<string | null>(null);
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const { days, byDay, monthTotal } = useMemo(() => {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const map = new Map<string, DayEntry[]>();
+    const involved = new Set<string>();
+    for (let d = 1; d <= daysInMonth; d++) map.set(isoOf(year, month, d), []);
+    for (const p of people) {
+      for (const a of p.absences) {
+        for (let d = 1; d <= daysInMonth; d++) {
+          const iso = isoOf(year, month, d);
+          if (a.dateDebut <= iso && a.dateFin >= iso) {
+            map.get(iso)!.push({ person: p, absence: a });
+            involved.add(p.id);
+          }
+        }
+      }
+    }
+    // Monday-first offset
+    const jsDay = new Date(year, month, 1).getDay(); // 0 = Sunday
+    const offset = (jsDay + 6) % 7;
+    const cells: (number | null)[] = Array.from({ length: offset }, () => null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    return { days: cells, byDay: map, monthTotal: involved.size };
+  }, [people, year, month]);
+
+  const shift = (delta: number) => {
+    setSelected(null);
+    const m = month + delta;
+    if (m < 0) {
+      setMonth(11);
+      setYear((y) => y - 1);
+    } else if (m > 11) {
+      setMonth(0);
+      setYear((y) => y + 1);
+    } else {
+      setMonth(m);
+    }
+  };
+
+  const selectedEntries = selected ? byDay.get(selected) ?? [] : [];
+
+  return (
+    <div className="rounded-2xl border bg-card shadow-sm p-3">
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => shift(-1)}
+          className="rounded-xl border p-2 text-muted-foreground hover:bg-muted"
+          aria-label="Mois précédent"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <div className="text-center">
+          <div className="text-sm font-bold">
+            {MONTH_NAMES[month]} {year}
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            {monthTotal} personne(s) absente(s) ce mois
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => shift(1)}
+          className="rounded-xl border p-2 text-muted-foreground hover:bg-muted"
+          aria-label="Mois suivant"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-muted-foreground">
+        {WEEK_DAYS.map((d, i) => (
+          <div key={i}>{d}</div>
+        ))}
+      </div>
+
+      <div className="mt-1 grid grid-cols-7 gap-1">
+        {days.map((d, i) => {
+          if (d === null) return <div key={`e${i}`} />;
+          const iso = isoOf(year, month, d);
+          const entries = byDay.get(iso) ?? [];
+          const isToday = iso === todayStr;
+          const isSelected = iso === selected;
+          return (
+            <button
+              key={iso}
+              type="button"
+              onClick={() => setSelected(isSelected ? null : iso)}
+              className={`flex h-12 flex-col items-center justify-start rounded-xl border py-1 ${
+                isSelected
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : isToday
+                    ? "border-primary bg-accent"
+                    : entries.length > 0
+                      ? "border-border bg-muted/60"
+                      : "border-transparent bg-background"
+              }`}
+            >
+              <span className="text-[12px] font-semibold leading-none">{d}</span>
+              <span className="mt-1 flex flex-wrap items-center justify-center gap-0.5 px-0.5">
+                {entries.slice(0, 3).map((e, k) => (
+                  <span
+                    key={k}
+                    className={`h-1.5 w-1.5 rounded-full ${MOTIF_DOT[e.absence.motif]}`}
+                  />
+                ))}
+              </span>
+              {entries.length > 3 && (
+                <span className="text-[9px] leading-none opacity-70">+{entries.length - 3}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {selected && (
+        <div className="mt-3 rounded-xl border bg-muted/40 p-3">
+          <div className="text-sm font-semibold">{fmt(selected)}</div>
+          {selectedEntries.length === 0 ? (
+            <p className="mt-1 text-xs text-muted-foreground">Aucune absence ce jour.</p>
+          ) : (
+            <ul className="mt-2 space-y-1.5">
+              {selectedEntries.map((e, i) => (
+                <li key={i} className="flex items-start gap-2 rounded-lg bg-card p-2 border">
+                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${MOTIF_DOT[e.absence.motif]}`} />
+                  <div className="min-w-0">
+                    <div className="truncate text-[13px] font-semibold">{e.person.nom}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {e.person.team} · {e.absence.motif}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {fmt(e.absence.dateDebut)} → {fmt(e.absence.dateFin)} · reprise {fmt(repriseOf(e.absence))}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {MOTIFS.map((m) => (
+          <span key={m} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <span className={`h-2 w-2 rounded-full ${MOTIF_DOT[m]}`} />
+            {m}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
