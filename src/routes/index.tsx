@@ -633,37 +633,64 @@ export function Index() {
           />
         ) : (
           <div className="space-y-4">
-            <div className="rounded-2xl bg-card shadow-sm border p-1.5 overflow-x-auto">
-              <div className="grid min-w-[380px] grid-cols-4 gap-1" role="tablist" aria-label="Équipes">
-                {TEAMS.map((t) => {
-                  const active = activeTeam === t;
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setActiveTeam(t)}
-                      className={`rounded-xl px-1 py-2 text-center ${
-                        active ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:bg-muted"
-                      }`}
-                      role="tab"
-                      aria-selected={active}
-                    >
-                      <span className="block text-[11px] font-semibold">{TEAM_SHORT[t]}</span>
-                      <span className="block text-[10px] opacity-70">{teamCounts[t]} pers.</span>
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="grid grid-cols-2 gap-1 rounded-2xl bg-card shadow-sm border p-1.5">
+              <button
+                type="button"
+                onClick={() => setView("liste")}
+                className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[12px] font-semibold ${
+                  view === "liste" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                <List className="w-4 h-4" /> Liste
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("calendrier")}
+                className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[12px] font-semibold ${
+                  view === "calendrier" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                <CalendarDays className="w-4 h-4" /> Calendrier
+              </button>
             </div>
 
-            <TeamList
-              people={activeTeamPeople}
-              onDelete={deletePerson}
-              onOpenAbsence={setAbsencePerson}
-              onDeleteAbsence={deleteAbsence}
-              onOpenHistory={setHistoryPerson}
-              repriseTodayIds={repriseTodayIds}
-            />
+            {view === "calendrier" ? (
+              <MonthCalendar people={people} />
+            ) : (
+              <>
+                <div className="rounded-2xl bg-card shadow-sm border p-1.5 overflow-x-auto">
+                  <div className="grid min-w-[380px] grid-cols-4 gap-1" role="tablist" aria-label="Équipes">
+                    {TEAMS.map((t) => {
+                      const active = activeTeam === t;
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setActiveTeam(t)}
+                          className={`rounded-xl px-1 py-2 text-center ${
+                            active ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:bg-muted"
+                          }`}
+                          role="tab"
+                          aria-selected={active}
+                        >
+                          <span className="block text-[11px] font-semibold">{TEAM_SHORT[t]}</span>
+                          <span className="block text-[10px] opacity-70">{teamCounts[t]} pers.</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <TeamList
+                  people={activeTeamPeople}
+                  onDelete={deletePerson}
+                  onOpenAbsence={setAbsencePerson}
+                  onDeleteAbsence={deleteAbsence}
+                  onOpenHistory={setHistoryPerson}
+                  repriseTodayIds={repriseTodayIds}
+                />
+              </>
+            )}
           </div>
         )}
       </main>
