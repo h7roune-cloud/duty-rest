@@ -1631,6 +1631,170 @@ function isoOf(y: number, m: number, d: number) {
 
 type DayEntry = { person: Person; absence: Absence };
 
+const MONTHS_FR = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+];
+
+function StatsPanel({ people }: { people: Person[] }) {
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState<number | "all">(now.getMonth());
+  const [exporting, setExporting] = useState(false);
+
+  const { start, end, label } = useMemo(() => {
+    if (month === "all") {
+      return {
+        start: new Date(year, 0, 1),
+        end: new Date(year, 11, 31),
+        label: `Année ${year}`,
+      };
+    }
+    return {
+      start: new Date(year, month, 1),
+      end: new Date(year, month + 1, 0),
+      label: `${MONTHS_FR[month]} ${year}`,
+    };
+  }, [year, month]);
+
+  const rows = useMemo(() => computeStats(people, start, end), [people, start, end]);
+  const grandTotal = rows.reduce((s, r) => s + r.total, 0);
+
+  const years = useMemo(() => {
+    const set = new Set<number>([now.getFullYear()]);
+    for (const p of people)
+      for (const a of p.absences) {
+        set.add(new Date(a.dateDebut).getFullYear());
+        set.add(new Date(a.dateFin).getFullYear());
+      }
+    return [...set].sort((a, b) => b - a);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [people]);
+
+  return (
+    <div className="space-y-3">
+      {/* Period selectors */}
+      <div className="rounded-2xl bg-card shadow-sm border p-3 space-y-2">
+        <div className="flex gap-2">
+          <select
+            value={month === "all" ? "all" : month}
+            onChange={(e) => setMonth(e.target.value === "all" ? "all" : Number(e.target.value))}
+            className="flex-1 rounded-xl border bg-background px-3 py-2 text-sm font-medium"
+            aria-label="Mois"
+          >
+            <option value="all">Toute l'année</option>
+            {MONTHS_FR.map((m, i) => (
+              <option key={m} value={i}>{m}</option>
+            ))}
+          </select>
+          <select
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            className="w-28 rounded-xl border bg-background px-3 py-2 text-sm font-medium"
+            aria-label="Année"
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-bold text-foreground">{rows.length}</span> personne(s) ·{" "}
+            <span className="font-bold text-foreground">{grandTotal}</span> jour(s) d'absence
+          </p>
+          <Button
+            size="sm"
+            disabled={exporting}
+            onClick={async () => {
+              setExporting(true);
+              try {
+                await exportStatsExcel(rows, label);
+                toast.success("Statistiques exportées en Excel");
+              } catch {
+                toast.error("Échec de l'export");
+              } finally {
+                setExporting(false);
+              }
+            }}
+            className="gap-1.5 rounded-xl"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            {exporting ? "Export..." : "Excel"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-2xl bg-card shadow-sm border overflow-hidden">
+        {rows.length === 0 ? (
+          <p className="p-6 text-center text-sm text-muted-foreground">
+            Aucune absence sur cette période.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-xs">
+              <thead>
+                <tr className="bg-primary text-primary-foreground">
+                  <th className="px-3 py-2.5 text-left font-semibold sticky left-0 bg-primary">Personnel</th>
+                  {MOTIFS.map((m) => (
+                    <th key={m} className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">
+                      {m.replace("Congé ", "C. ").replace("administratif", "admin.")}
+                    </th>
+                  ))}
+                  <th className="px-2 py-2.5 text-center font-bold">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={r.person.id} className={i % 2 === 1 ? "bg-muted/40" : ""}>
+                    <td className="px-3 py-2 sticky left-0 bg-card">
+                      <span className="block font-semibold">{r.person.nom}</span>
+                      <span className="block text-[10px] text-muted-foreground">
+                        {r.person.grade} · {TEAM_SHORT[r.person.team]}
+                      </span>
+                    </td>
+                    {MOTIFS.map((m) => {
+                      const v = r.byMotif[m] ?? 0;
+                      return (
+                        <td
+                          key={m}
+                          className="px-2 py-2 text-center"
+                          style={v > 0 ? { backgroundColor: `#${(MOTIF_HEX[m] ?? "FFE2E8F0").slice(2)}` } : undefined}
+                        >
+                          {v > 0 ? <span className="font-bold">{v}</span> : <span className="text-muted-foreground/40">-</span>}
+                        </td>
+                      );
+                    })}
+                    <td className="px-2 py-2 text-center font-bold text-primary">{r.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-primary/10 font-bold">
+                  <td className="px-3 py-2 sticky left-0 bg-card">TOTAL</td>
+                  {MOTIFS.map((m) => {
+                    const v = rows.reduce((s, r) => s + (r.byMotif[m] ?? 0), 0);
+                    return (
+                      <td key={m} className="px-2 py-2 text-center">
+                        {v > 0 ? v : "-"}
+                      </td>
+                    );
+                  })}
+                  <td className="px-2 py-2 text-center text-primary">{grandTotal}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </div>
+      <p className="text-center text-[10px] text-muted-foreground">
+        Durées en jours, calculées sur la période « {label} »
+      </p>
+    </div>
+  );
+}
+
 function MonthCalendar({ people }: { people: Person[] }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
