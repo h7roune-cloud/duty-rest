@@ -26,6 +26,7 @@ import {
   Upload,
   CalendarDays,
   List,
+  BarChart3,
 } from "lucide-react";
 
 
@@ -312,7 +313,7 @@ export function Index() {
   const normalizedSearch = search.trim();
   const [aboutOpen, setAboutOpen] = useState(false);
   const [dataMenuOpen, setDataMenuOpen] = useState(false);
-  const [view, setView] = useState<"liste" | "calendrier">("liste");
+  const [view, setView] = useState<"liste" | "calendrier" | "stats">("liste");
 
 
   useEffect(() => {
