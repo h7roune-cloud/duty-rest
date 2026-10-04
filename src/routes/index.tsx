@@ -302,6 +302,167 @@ async function exportExcel(people: Person[]) {
   URL.revokeObjectURL(url);
 }
 
+function overlapDays(a: Absence, start: Date, end: Date): number {
+  const s = new Date(a.dateDebut);
+  const e = new Date(a.dateFin);
+  const from = s > start ? s : start;
+  const to = e < end ? e : end;
+  const diff = Math.round((to.getTime() - from.getTime()) / 86400000) + 1;
+  return diff > 0 ? diff : 0;
+}
+
+interface StatRow {
+  person: Person;
+  byMotif: Record<string, number>;
+  total: number;
+}
+
+function computeStats(people: Person[], start: Date, end: Date): StatRow[] {
+  return people
+    .map((p) => {
+      const byMotif: Record<string, number> = {};
+      let total = 0;
+      for (const a of p.absences) {
+        const d = overlapDays(a, start, end);
+        if (d > 0) {
+          byMotif[a.motif] = (byMotif[a.motif] ?? 0) + d;
+          total += d;
+        }
+      }
+      return { person: p, byMotif, total };
+    })
+    .filter((r) => r.total > 0)
+    .sort((a, b) => b.total - a.total);
+}
+
+async function exportStatsExcel(rows: StatRow[], label: string) {
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Ayoub Sadkouni";
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet("Statistiques", { views: [{ state: "frozen", ySplit: 3 }] });
+  const nCols = 4 + MOTIFS.length + 1;
+
+  ws.mergeCells(1, 1, 1, nCols);
+  const t = ws.getCell(1, 1);
+  t.value = `Statistiques des absences — ${label}`;
+  t.font = { name: "Calibri", size: 16, bold: true, color: { argb: "FFFFFFFF" } };
+  t.alignment = { vertical: "middle", horizontal: "center" };
+  t.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } };
+  ws.getRow(1).height = 32;
+
+  ws.mergeCells(2, 1, 2, nCols);
+  const s = ws.getCell(2, 1);
+  s.value = `${rows.length} personne(s) concernée(s) · durées en jours`;
+  s.font = { name: "Calibri", size: 10, italic: true, color: { argb: "FF64748B" } };
+  s.alignment = { vertical: "middle", horizontal: "center" };
+
+  const headers = ["Nom", "Grade", "PPR", "Équipe", ...MOTIFS, "Total (j)"];
+  const hr = ws.getRow(3);
+  headers.forEach((h, i) => {
+    const c = hr.getCell(i + 1);
+    c.value = h;
+    c.font = { name: "Calibri", size: 10, bold: true, color: { argb: "FFFFFFFF" } };
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0EA5E9" } };
+    c.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    c.border = {
+      top: { style: "thin", color: { argb: "FFCBD5E1" } },
+      bottom: { style: "medium", color: { argb: "FF0369A1" } },
+      left: { style: "thin", color: { argb: "FFCBD5E1" } },
+      right: { style: "thin", color: { argb: "FFCBD5E1" } },
+    };
+  });
+  hr.height = 30;
+
+  const motifTotals: Record<string, number> = {};
+  let grandTotal = 0;
+  let ri = 4;
+  rows.forEach((r, idx) => {
+    const row = ws.getRow(ri);
+    const vals: (string | number)[] = [
+      r.person.nom,
+      r.person.grade,
+      r.person.ppr,
+      r.person.team,
+      ...MOTIFS.map((m) => {
+        const v = r.byMotif[m] ?? 0;
+        motifTotals[m] = (motifTotals[m] ?? 0) + v;
+        return v || "";
+      }),
+      r.total,
+    ];
+    grandTotal += r.total;
+    vals.forEach((v, i) => {
+      const c = row.getCell(i + 1);
+      c.value = v as never;
+      c.font = { name: "Calibri", size: 10, bold: i === nCols - 1 };
+      c.alignment = { vertical: "middle", horizontal: i >= 4 ? "center" : "left" };
+      c.border = {
+        top: { style: "hair", color: { argb: "FFE2E8F0" } },
+        bottom: { style: "hair", color: { argb: "FFE2E8F0" } },
+        left: { style: "hair", color: { argb: "FFE2E8F0" } },
+        right: { style: "hair", color: { argb: "FFE2E8F0" } },
+      };
+      if (idx % 2 === 1) c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+    });
+    // color motif cells
+    MOTIFS.forEach((m, mi) => {
+      const v = r.byMotif[m] ?? 0;
+      if (v > 0) {
+        const c = row.getCell(5 + mi);
+        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: MOTIF_HEX[m] ?? "FFE2E8F0" } };
+        c.font = { name: "Calibri", size: 10, bold: true, color: { argb: "FF1E293B" } };
+      }
+    });
+    row.height = 20;
+    ri++;
+  });
+
+  if (rows.length === 0) {
+    ws.mergeCells(4, 1, 4, nCols);
+    const c = ws.getCell(4, 1);
+    c.value = "Aucune absence sur cette période.";
+    c.alignment = { horizontal: "center", vertical: "middle" };
+    c.font = { italic: true, color: { argb: "FF94A3B8" } };
+    ri++;
+  } else {
+    const tr = ws.getRow(ri);
+    const totVals: (string | number)[] = ["TOTAL", "", "", "", ...MOTIFS.map((m) => motifTotals[m] || ""), grandTotal];
+    totVals.forEach((v, i) => {
+      const c = tr.getCell(i + 1);
+      c.value = v as never;
+      c.font = { name: "Calibri", size: 10, bold: true, color: { argb: "FFFFFFFF" } };
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } };
+      c.alignment = { vertical: "middle", horizontal: i >= 4 ? "center" : "left" };
+    });
+    tr.height = 22;
+    ri++;
+  }
+
+  const widths = [24, 18, 12, 20, ...MOTIFS.map(() => 12), 10];
+  widths.forEach((w, i) => (ws.getColumn(i + 1).width = w));
+
+  ws.mergeCells(ri + 1, 1, ri + 1, nCols);
+  const f = ws.getCell(ri + 1, 1);
+  f.value = "Application développée par Ayoub Sadkouni — sadkouni1@gmail.com";
+  f.font = { size: 9, italic: true, color: { argb: "FF94A3B8" } };
+  f.alignment = { horizontal: "center" };
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `statistiques_${label.replace(/[^a-zA-Z0-9_-]/g, "_")}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export function Index() {
   const [people, setPeople] = useState<Person[]>([]);
   const [loaded, setLoaded] = useState(false);
