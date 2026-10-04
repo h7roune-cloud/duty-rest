@@ -664,7 +664,7 @@ export function Index() {
 
       {/* Header with gradient */}
       <header
-        className="relative overflow-hidden text-primary-foreground"
+        className="relative z-30 text-primary-foreground"
         style={{ background: "var(--gradient-primary)" }}
       >
         {/* Decorative blur circles removed for Android WebView performance */}
