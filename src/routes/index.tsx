@@ -795,7 +795,7 @@ export function Index() {
           />
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-1 rounded-2xl bg-card shadow-sm border p-1.5">
+            <div className="grid grid-cols-3 gap-1 rounded-2xl bg-card shadow-sm border p-1.5">
               <button
                 type="button"
                 onClick={() => setView("liste")}
@@ -814,10 +814,21 @@ export function Index() {
               >
                 <CalendarDays className="w-4 h-4" /> Calendrier
               </button>
+              <button
+                type="button"
+                onClick={() => setView("stats")}
+                className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[12px] font-semibold ${
+                  view === "stats" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                <BarChart3 className="w-4 h-4" /> Stats
+              </button>
             </div>
 
             {view === "calendrier" ? (
               <MonthCalendar people={people} />
+            ) : view === "stats" ? (
+              <StatsPanel people={people} />
             ) : (
               <>
                 <div className="rounded-2xl bg-card shadow-sm border p-1.5 overflow-x-auto">
