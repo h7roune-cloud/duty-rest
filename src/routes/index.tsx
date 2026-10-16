@@ -668,7 +668,7 @@ export function Index() {
         style={{ background: "var(--gradient-primary)" }}
       >
         {/* Decorative blur circles removed for Android WebView performance */}
-        <div className="relative mx-auto max-w-6xl px-4 pt-6 pb-8">
+        <div className="relative mx-auto max-w-6xl px-4 pt-6 pb-6">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <div className="shrink-0 w-11 h-11 rounded-2xl bg-white/20  flex items-center justify-center">
@@ -779,7 +779,7 @@ export function Index() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-3 sm:px-4 -mt-4 space-y-4">
+      <main className="mx-auto max-w-6xl px-3 sm:px-4 pt-5 space-y-4">
         {/* Search bar */}
         <SearchBox value={search} onChange={setSearch} />
 
