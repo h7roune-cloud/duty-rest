@@ -901,7 +901,7 @@ function SimpleModal({
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative max-h-[90vh] w-full overflow-auto rounded-2xl border bg-background p-5 shadow-lg ${className}`}
+        className={`relative max-h-[90vh] w-full overflow-auto rounded-2xl border bg-background p-5 shadow-lg text-foreground ${className}`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {children}
