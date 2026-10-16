@@ -575,7 +575,7 @@ export function Index() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleBackup = () => {
+  const handleBackup = async () => {
     try {
       const payload = {
         app: "gestion-conges",
