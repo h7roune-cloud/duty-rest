@@ -4,7 +4,7 @@ const config: CapacitorConfig = {
   appId: 'com.ayoub.conges',
   appName: 'Gestion Congés',
   webDir: 'dist-spa',
-  backgroundColor: '#0EA5E9',
+  backgroundColor: '#004B93',
   server: {
     androidScheme: 'https',
   },
@@ -12,7 +12,7 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 1500,
       launchAutoHide: true,
-      backgroundColor: '#0EA5E9',
+      backgroundColor: '#004B93',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false,
       splashFullScreen: true,
