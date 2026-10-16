@@ -1003,8 +1003,12 @@ function NotificationsPopover({
                 <div className="text-xs text-muted-foreground">
                   {e.person.team}
                 </div>
-                <div className="text-sm mt-1">
-                  {e.absence.motif} · fin le {fmt(e.absence.dateFin)}
+                <div className="text-sm mt-1 font-semibold">
+                  <span className="text-primary">{e.absence.motif}</span>
+                  <span className="text-foreground"> · </span>
+                  <span className="text-destructive">
+                    fin le {fmt(e.absence.dateFin)}
+                  </span>
                 </div>
                 <Badge
                   variant={e.days === 0 ? "destructive" : "secondary"}
