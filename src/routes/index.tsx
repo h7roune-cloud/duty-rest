@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { saveFile } from "@/lib/save-file";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -292,14 +293,7 @@ async function exportExcel(people: Person[]) {
   const blob = new Blob([buf], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `conges_${new Date().toISOString().slice(0, 10)}.xlsx`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  await saveFile(blob, `conges_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 function overlapDays(a: Absence, start: Date, end: Date): number {
@@ -453,14 +447,7 @@ async function exportStatsExcel(rows: StatRow[], label: string) {
   const blob = new Blob([buf], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `statistiques_${label.replace(/[^a-zA-Z0-9_-]/g, "_")}.xlsx`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  await saveFile(blob, `statistiques_${label.replace(/[^a-zA-Z0-9_-]/g, "_")}.xlsx`);
 }
 
 export function Index() {
@@ -601,15 +588,8 @@ export function Index() {
       const blob = new Blob([JSON.stringify(payload, null, 2)], {
         type: "application/json",
       });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
       const stamp = new Date().toISOString().slice(0, 10);
-      a.href = url;
-      a.download = `sauvegarde-conges-${stamp}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await saveFile(blob, `sauvegarde-conges-${stamp}.json`);
       toast.success("Sauvegarde téléchargée", {
         description: `${people.length} personne(s) · ${totalAbsences} absence(s)`,
       });
