@@ -3,7 +3,11 @@ import { QueryClient } from "@tanstack/react-query";
 import { QueryClientProvider } from "@tanstack/react-query";
 
 import { Index } from "./routes/index";
+import { installBackButton } from "./lib/back-button";
 import "./styles.css";
+
+// Android hardware back button: handled from the very first frame of the APK.
+void installBackButton();
 
 const queryClient = new QueryClient();
 
