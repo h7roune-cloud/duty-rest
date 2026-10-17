@@ -84,6 +84,22 @@ L'app démarre avec l'icône calendrier + splash bleu, puis fonctionne **sans In
 
 ---
 
+## ↩️ Bouton « retour » Android
+
+Le bouton « retour » du téléphone ne ferme plus l'app brutalement. Il recule
+dans l'app, dans cet ordre :
+
+1. ferme la fenêtre ouverte (nouveau personnel, absence, historique, notifications, à propos)
+2. ferme le menu « Données »
+3. vide la case de recherche
+4. revient à l'onglet « Liste »
+5. une première pression affiche « Appuyez encore pour quitter », la seconde ferme l'app
+
+C'est géré par `@capacitor/app` dans `src/lib/back-button.ts`.
+Rien à configurer dans Android Studio : `npx cap sync android` installe le plugin automatiquement.
+
+---
+
 ## 🎨 Personnaliser icône ou splash
 
 1. Remplacez `assets/icon.png` (1024×1024 PNG) et/ou `assets/splash.png` (2732×2732 PNG recommandé, minimum 1920×1920).
