@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import appIcon from "../../assets/icon.png";
 import { saveFile } from "@/lib/save-file";
 import { installBackButton, quitApp, useBackHandler } from "@/lib/back-button";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -34,6 +35,16 @@ import {
 
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Gestion des Congés — Personnel et absences" },
+      { name: "description", content: "Suivi des congés, permissions et absences du personnel, calendrier et statistiques." },
+      { property: "og:title", content: "Gestion des Congés — Personnel et absences" },
+      { property: "og:description", content: "Suivi des congés, permissions et absences du personnel, calendrier et statistiques." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: Index,
 });
 
@@ -680,9 +691,7 @@ export function Index() {
         <div className="relative mx-auto max-w-6xl px-4 pt-6 pb-6">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="shrink-0 w-11 h-11 rounded-2xl bg-white/20  flex items-center justify-center">
-                <Sparkles className="w-5 h-5" />
-              </div>
+              <img src={appIcon} alt="Logo Gestion des Congés" className="h-14 w-14 shrink-0 rounded-lg object-contain" />
               <div className="min-w-0">
                 <h1 className="truncate text-xl sm:text-2xl font-bold tracking-tight">
                   Gestion des Congés

@@ -41,7 +41,7 @@ npx cap add android
 > - `appId: com.ayoub.conges`
 > - `appName: Gestion Congés`
 > - `webDir: dist-spa`
-> - Splash screen bleu `#004B93`, 1.5 s, plein écran
+> - Splash screen avec le logo fourni sur fond blanc, 1.5 s, plein écran
 > - Bouton « retour » Android géré dans l'app (voir § Retour Android)
 
 ### 4. Générer icônes + splash screen pour toutes les tailles
@@ -80,7 +80,9 @@ Dans Android Studio :
 ### 8. Installer sur le téléphone
 
 Copiez l'APK, ouvrez-le, autorisez "Sources inconnues", installez ✅
-L'app démarre avec l'icône calendrier + splash bleu, puis fonctionne **sans Internet**.
+L'app démarre avec votre logo bleu et orange + écran de démarrage assorti, puis fonctionne **sans Internet**.
+
+Pour appliquer le nouveau logo à un projet Android déjà créé, exécutez `npm run build:spa`, puis `npx capacitor-assets generate --android` et `npx cap sync android`, avant de reconstruire l'APK dans Android Studio. La synchronisation seule ne régénère pas les icônes.
 
 ---
 

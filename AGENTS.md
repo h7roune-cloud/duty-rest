@@ -18,3 +18,6 @@
 > `@capacitor/app` directly inside a screen — the plugin must stay behind this
 > module so the same code runs in the browser and in the APK.
 <!-- LOVABLE:END-APP -->
+
+- Keep the header logo bundled from the Android icon source so the same artwork remains available offline in the APK; keep the original upload in the asset catalogue.
+- Generate launcher icons and splash resources from `assets/` after changing logo sources; Capacitor sync alone does not regenerate native artwork.
