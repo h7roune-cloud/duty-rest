@@ -27,18 +27,26 @@ export async function installBackButton(): Promise<void> {
     if (!Capacitor.isNativePlatform()) return;
     const { App } = await import("@capacitor/app");
     await App.addListener("backButton", () => {
-      for (let i = stack.length - 1; i >= 0; i--) {
-        try {
-          if (stack[i]()) return;
-        } catch {
-          /* a broken handler must never block navigation */
-        }
-      }
-      void App.exitApp();
+      if (!pressBack()) void App.exitApp();
     });
   } catch {
     /* plugin unavailable (plain browser) — nothing to hook */
   }
+}
+
+/**
+ * One back press: the topmost active handler consumes it. Returns false when
+ * there is nothing left to go back to, so the caller can close the app.
+ */
+export function pressBack(): boolean {
+  for (let i = stack.length - 1; i >= 0; i--) {
+    try {
+      if (stack[i]()) return true;
+    } catch {
+      /* a broken handler must never block navigation */
+    }
+  }
+  return false;
 }
 
 /** Closes the app (used when there is nothing left to go back to). */
