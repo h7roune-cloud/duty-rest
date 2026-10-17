@@ -19,7 +19,7 @@ Application compilable en APK **entièrement local** grâce à Capacitor, avec i
 ### 1. Installer Capacitor + plugin Splash + générateur d'icônes
 
 ```bash
-npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/splash-screen
+npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/splash-screen @capacitor/app
 npm install -D @capacitor/assets
 ```
 
@@ -41,7 +41,8 @@ npx cap add android
 > - `appId: com.ayoub.conges`
 > - `appName: Gestion Congés`
 > - `webDir: dist-spa`
-> - Splash screen bleu `#0EA5E9`, 1.5 s, plein écran
+> - Splash screen bleu `#004B93`, 1.5 s, plein écran
+> - Bouton « retour » Android géré dans l'app (voir § Retour Android)
 
 ### 4. Générer icônes + splash screen pour toutes les tailles
 
