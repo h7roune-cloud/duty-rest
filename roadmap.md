@@ -1,0 +1,3 @@
+- [ ] Replace the header logo with the uploaded logo.
+- [ ] Prepare matching offline Android icon, splash screen, and favicon.
+- [ ] Verify the displayed logo and document APK icon regeneration.
