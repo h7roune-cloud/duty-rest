@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { saveFile } from "@/lib/save-file";
+import { installBackButton, quitApp, useBackHandler } from "@/lib/back-button";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -462,6 +463,34 @@ export function Index() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [dataMenuOpen, setDataMenuOpen] = useState(false);
   const [view, setView] = useState<"liste" | "calendrier" | "stats">("liste");
+
+  // --- Android hardware back button -------------------------------------
+  // Handlers are registered from the least to the most important: the back
+  // key closes an open dialog first, then the data menu, then the search,
+  // then returns to the list, and only quits the app on a second press.
+  useEffect(() => {
+    void installBackButton();
+  }, []);
+
+  const lastBack = useRef(0);
+  useBackHandler(true, () => {
+    const now = Date.now();
+    if (now - lastBack.current < 2000) {
+      void quitApp();
+      return;
+    }
+    lastBack.current = now;
+    toast.info("Appuyez encore pour quitter");
+  });
+  useBackHandler(view !== "liste", () => setView("liste"));
+  useBackHandler(normalizedSearch.length > 0, () => setSearch(""));
+  useBackHandler(dataMenuOpen, () => setDataMenuOpen(false));
+  useBackHandler(aboutOpen, () => setAboutOpen(false));
+  useBackHandler(historyPerson !== null, () => setHistoryPerson(null));
+  useBackHandler(absencePerson !== null, () => setAbsencePerson(null));
+  useBackHandler(addPersonOpen, () => setAddPersonOpen(false));
+
+
 
 
   useEffect(() => {
@@ -971,6 +1000,7 @@ function NotificationsPopover({
   expiring: { person: Person; absence: Absence; days: number }[];
 }) {
   const [open, setOpen] = useState(false);
+  useBackHandler(open, () => setOpen(false));
   return (
     <>
       <Button
@@ -1784,6 +1814,7 @@ function MonthCalendar({ people }: { people: Person[] }) {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [selected, setSelected] = useState<string | null>(null);
+  useBackHandler(selected !== null, () => setSelected(null));
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const { days, byDay, monthTotal } = useMemo(() => {
