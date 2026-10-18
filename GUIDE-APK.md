@@ -39,7 +39,7 @@ npx cap add android
 
 > `capacitor.config.ts` est déjà configuré :
 > - `appId: com.ayoub.conges`
-> - `appName: Gestion Congés`
+> - `appName: Gestion des Congés`
 > - `webDir: dist-spa`
 > - Splash screen avec le logo fourni sur fond blanc, 1.5 s, plein écran
 > - Bouton « retour » Android géré dans l'app (voir § Retour Android)
@@ -128,19 +128,26 @@ Puis rebuild APK dans Android Studio.
 
 ---
 
-## 🏷️ Changer le nom affiché
+## 🏷️ Changer le nom affiché (sous l'icône)
 
-Modifiez `appName` dans `capacitor.config.ts`, puis :
+Le nom affiché sur le téléphone vient de `appName` dans `capacitor.config.ts`
+(actuellement **Gestion des Congés**). Après toute modification :
 
 ```bash
 npx cap sync android
 ```
 
-Ou éditez directement `android/app/src/main/res/values/strings.xml` :
+`cap sync` réécrit automatiquement `android/app/src/main/res/values/strings.xml` :
 
 ```xml
-<string name="app_name">Gestion Congés</string>
+<string name="app_name">Gestion des Congés</string>
 ```
+
+> ⚠️ Ne modifiez `strings.xml` qu'en dernier recours (projet Android déjà créé,
+> `cap sync` impossible) : la prochaine synchronisation écraserait votre édition.
+> Le nom se met à jour uniquement après un nouveau build de l'APK, puis une
+> réinstallation sur le téléphone.
+
 
 ---
 

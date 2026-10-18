@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.ayoub.conges',
-  appName: 'Gestion Congés',
+  appName: 'Gestion des Congés',
   webDir: 'dist-spa',
   backgroundColor: '#004B93',
   server: {
