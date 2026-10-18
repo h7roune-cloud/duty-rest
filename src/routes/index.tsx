@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import appIcon from "../../assets/icon.png";
-import { saveFile } from "@/lib/save-file";
+import { saveFile, errorText } from "@/lib/save-file";
 import { installBackButton, quitApp, useBackHandler } from "@/lib/back-button";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -608,8 +608,8 @@ export function Index() {
     try {
       await exportExcel(people);
       toast.success("Fichier Excel téléchargé");
-    } catch {
-      toast.error("Erreur lors de l'export");
+    } catch (e) {
+      toast.error("Erreur lors de l'export", { description: errorText(e) });
     }
   };
 
@@ -633,8 +633,8 @@ export function Index() {
       toast.success("Sauvegarde téléchargée", {
         description: `${people.length} personne(s) · ${totalAbsences} absence(s)`,
       });
-    } catch {
-      toast.error("Erreur lors de la sauvegarde");
+    } catch (e) {
+      toast.error("Erreur lors de la sauvegarde", { description: errorText(e) });
     }
   };
 
@@ -1734,8 +1734,8 @@ function StatsPanel({ people }: { people: Person[] }) {
               try {
                 await exportStatsExcel(rows, label);
                 toast.success("Statistiques exportées en Excel");
-              } catch {
-                toast.error("Échec de l'export");
+              } catch (e) {
+                toast.error("Échec de l'export", { description: errorText(e) });
               } finally {
                 setExporting(false);
               }
